@@ -67,6 +67,81 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
+dnl === Rust compiler ==========================================================
+
+AC_CHECK_PROGS(CARGO, [cargo], [no])
+AS_IF(test x$CARGO = xno,
+    AC_MSG_ERROR([cargo is required.  Please install the Rust toolchain from https://www.rust-lang.org/])
+)
+AC_CHECK_PROGS(RUSTC, [rustc], [no])
+AS_IF(test x$RUSTC = xno,
+    AC_MSG_ERROR([rustc is required.  Please install the Rust toolchain from https://www.rust-lang.org/])
+)
+
+dnl Minimum version of rustc that we support
+dnl If you change this, please update COMPILING.md
+MINIMUM_RUST_MAJOR=1
+MINIMUM_RUST_MINOR=31
+
+rust_version=`$RUSTC --version`
+version=`echo "$rust_version" | sed -e 's/^rustc //g'`
+major=`echo "$version" | cut -d. -f1`
+minor=`echo "$version" | cut -d. -f2`
+
+AS_IF(test "$major" -lt "$MINIMUM_RUST_MAJOR" -o "$minor" -lt "$MINIMUM_RUST_MINOR",
+    AC_MSG_ERROR([librsvg needs at rustc version at least $MINIMUM_RUST_MAJOR.$MINIMUM_RUST_MINOR])
+)
+
+dnl ===========================================================================
+dnl Specify --enable-debug to make a development release.  By default,
+dnl we build in public release mode.
+
+AC_ARG_ENABLE(debug,
+              AC_HELP_STRING([--enable-debug],
+                             [Build Rust code with debugging information [default=no]]),
+              [debug_release=$enableval],
+	      [
+	        if test "x$LIBRSVG_DEBUG" = "x"; then
+		  debug_release="no"
+		elif test "x$LIBRSVG_DEBUG" = "xyes"; then
+		  debug_release="yes"
+		elif test "x$LIBRSVG_DEBUG" = "xno"; then
+		  debug_release="no"
+		fi
+	      ])
+
+AC_MSG_CHECKING(whether to build Rust code with debugging information)
+if test "x$debug_release" = "xyes" ; then
+	AC_MSG_RESULT(yes)
+	RUST_TARGET_SUBDIR=debug
+else
+	AC_MSG_RESULT(no)
+	RUST_TARGET_SUBDIR=release
+fi
+AM_CONDITIONAL([DEBUG_RELEASE], [test "x$debug_release" = "xyes"])
+
+AC_ARG_VAR(RUST_TARGET, [Set rust target (default=$host)])
+if test "x$RUST_TARGET" = x; then
+	RUST_TARGET=$host
+fi
+
+AM_CONDITIONAL(CROSS_COMPILING, test $cross_compiling = yes)
+if test "x$cross_compiling" = "xyes" ; then
+	RUST_TARGET_SUBDIR="$RUST_TARGET/$RUST_TARGET_SUBDIR"
+fi
+AC_SUBST([RUST_TARGET_SUBDIR])
+# Check if -ldl is needed to use dlopen()
+AC_CHECK_FUNC(dlopen, [],
+              [AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS=-ldl])])
+AC_SUBST(DLOPEN_LIBS)
+
+# Check for pthread - Rust's stdlib requires this
+AC_CHECK_FUNC(pthread_yield, [],
+              [AC_CHECK_LIB(pthread, pthread_yield, [PTHREAD_LIBS=-lpthread])])
+AC_SUBST(PTHREAD_LIBS)
+
+dnl ===========================================================================
+
 dnl libtool/libtoolize; version 2.4.2 is the tested version. This or any
 dnl compatible later version may be used
 LT_INIT([win32-dll])

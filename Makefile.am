@@ -16,6 +16,60 @@ check_PROGRAMS= pngtest pngunknown pngstest pngvalid pngimage pngcp
 if HAVE_CLOCK_GETTIME
 check_PROGRAMS += timepng
 endif
+NULL =
+
+RUST_SRC =			\
+	Cargo.toml		\
+	png_rust/Cargo.toml	\
+	$(NULL)
+
+RUST_EXTRA =			\
+	Cargo.lock		\
+	cargo-vendor-config	\
+	$(NULL)
+
+if DEBUG_RELEASE
+CARGO_RELEASE_ARGS=
+else
+CARGO_RELEASE_ARGS=--release
+endif
+
+if CROSS_COMPILING
+CARGO_TARGET_ARGS=--target=$(RUST_TARGET)
+endif
+
+CARGO_VERBOSE = $(cargo_verbose_$(V))
+cargo_verbose_ = $(cargo_verbose_$(AM_DEFAULT_VERBOSITY))
+cargo_verbose_0 =
+cargo_verbose_1 = --verbose
+
+RUST_LIB=@abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libpng_rust.a
+CARGO_TARGET_DIR=@abs_top_builddir@/target
+
+check-local:
+	cd $(srcdir) && \
+	CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) $(CARGO) --locked test $(CARGO_VERBOSE) $(CARGO_TARGET_ARGS) $(CARGO_RELEASE_ARGS)
+
+clean-local:
+	cd $(top_srcdir) && \
+	CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) $(CARGO) clean
+
+dist-hook:
+	(cd $(distdir) &&							\
+	$(CARGO) vendor -q &&							\
+	mkdir .cargo &&								\
+	cp cargo-vendor-config .cargo/config)
+
+$(RUST_LIB): $(RUST_SRC)
+	+cd $(top_srcdir)/png_rust &&						\
+	CARGO_TARGET_DIR=$(CARGO_TARGET_DIR)					\
+	$(CARGO) --locked build $(CARGO_VERBOSE) $(CARGO_TARGET_ARGS) $(CARGO_RELEASE_ARGS)
+
+libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD =	\
+		$(RUST_LIB)	\
+		$(PTHREAD_LIBS) \
+		$(DLOPEN_LIBS)	\
+		$(NULL)
 
 # Utilities - installed
 bin_PROGRAMS= pngfix png-fix-itxt
@@ -31,30 +85,30 @@ bin_PROGRAMS= pngfix png-fix-itxt
 BUILT_SOURCES = pnglibconf.h
 
 pngtest_SOURCES = pngtest.c
-pngtest_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngtest_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 pngvalid_SOURCES = contrib/libtests/pngvalid.c
-pngvalid_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngvalid_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 pngstest_SOURCES = contrib/libtests/pngstest.c
-pngstest_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngstest_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 pngunknown_SOURCES = contrib/libtests/pngunknown.c
-pngunknown_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngunknown_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 pngimage_SOURCES = contrib/libtests/pngimage.c
-pngimage_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngimage_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 timepng_SOURCES = contrib/libtests/timepng.c
-timepng_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+timepng_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 pngfix_SOURCES = contrib/tools/pngfix.c
-pngfix_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngfix_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 png_fix_itxt_SOURCES = contrib/tools/png-fix-itxt.c
 
 pngcp_SOURCES = contrib/tools/pngcp.c
-pngcp_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la
+pngcp_LDADD = libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@.la $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_LIBADD)
 
 # Generally these are single line shell scripts to run a test with a particular
 # set of parameters:
@@ -306,7 +360,7 @@ scripts/pnglibconf.c: scripts/pnglibconf.dfa scripts/options.awk pngconf.h
 	mv pnglibconf.tf7 $@
 
 $(libpng@PNGLIB_MAJOR@@PNGLIB_MINOR@_la_OBJECTS): png.h pngconf.h \
-	pnglibconf.h pngpriv.h pngdebug.h pnginfo.h pngstruct.h pngprefix.h
+	pnglibconf.h pngpriv.h pngdebug.h pnginfo.h pngstruct.h pngprefix.h $(RUST_LIB)
 
 test: check-am
 
