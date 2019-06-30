@@ -1,4 +1,3 @@
-
 /* png.c - location for general purpose libpng functions
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -261,6 +260,8 @@ png_create_png_struct,(png_const_charp user_png_ver, png_voidp error_ptr,
     * to be called.
     */
    memset(&create_struct, 0, (sizeof create_struct));
+
+   create_struct.rust_ptr = png_rust_new();
 
    /* Added at libpng-1.2.6 */
 #  ifdef PNG_USER_LIMITS_SUPPORTED

@@ -1,4 +1,3 @@
-
 /* pngrutil.c - utilities to read a PNG file
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -869,7 +868,7 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_ptr->width = width;
    png_ptr->height = height;
    png_ptr->bit_depth = (png_byte)bit_depth;
-   png_ptr->interlaced = (png_byte)interlace_type;
+   png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
    png_ptr->color_type = (png_byte)color_type;
 #ifdef PNG_MNG_FEATURES_SUPPORTED
    png_ptr->filter_type = (png_byte)filter_type;
@@ -3170,7 +3169,7 @@ png_check_chunk_length(png_const_structrp png_ptr, png_uint_32 length)
          * (size_t)png_ptr->channels
          * (png_ptr->bit_depth > 8? 2: 1)
          + 1
-         + (png_ptr->interlaced? 6: 0);
+         + (png_rust_get_interlace(png_ptr->rust_ptr)? 6: 0);
       if (png_ptr->height > PNG_UINT_32_MAX/row_factor)
          idat_limit = PNG_UINT_31_MAX;
       else
@@ -3202,7 +3201,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
    unsigned int pixel_depth = png_ptr->transformed_pixel_depth;
    png_const_bytep sp = png_ptr->row_buf + 1;
    png_alloc_size_t row_width = png_ptr->width;
-   unsigned int pass = png_ptr->pass;
+   unsigned int pass = png_rust_get_pass(png_ptr->rust_ptr);
    png_bytep end_ptr = 0;
    png_byte end_byte = 0;
    unsigned int end_mask;
@@ -3255,7 +3254,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
     * pass.
     */
 #ifdef PNG_READ_INTERLACING_SUPPORTED
-   if (png_ptr->interlaced != 0 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
        (png_ptr->transformations & PNG_INTERLACE) != 0 &&
        pass < 6 && (display == 0 ||
        /* The following copies everything for 'display' on passes 0, 2 and 4. */
@@ -4344,7 +4343,7 @@ png_read_finish_row(png_structrp png_ptr)
    if (png_ptr->row_number < png_ptr->num_rows)
       return;
 
-   if (png_ptr->interlaced != 0)
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       png_ptr->row_number = 0;
 
@@ -4355,22 +4354,22 @@ png_read_finish_row(png_structrp png_ptr)
 
       do
       {
-         png_ptr->pass++;
+         png_rust_incr_pass(png_ptr->rust_ptr);
 
-         if (png_ptr->pass >= 7)
+         if ( ! png_rust_pass_is_valid(png_ptr->rust_ptr))
             break;
 
          png_ptr->iwidth = (png_ptr->width +
-            png_pass_inc[png_ptr->pass] - 1 -
-            png_pass_start[png_ptr->pass]) /
-            png_pass_inc[png_ptr->pass];
+            png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+            png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
+            png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
 
          if ((png_ptr->transformations & PNG_INTERLACE) == 0)
          {
             png_ptr->num_rows = (png_ptr->height +
-                png_pass_yinc[png_ptr->pass] - 1 -
-                png_pass_ystart[png_ptr->pass]) /
-                png_pass_yinc[png_ptr->pass];
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+                png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
          }
 
          else  /* if (png_ptr->transformations & PNG_INTERLACE) */
@@ -4378,7 +4377,7 @@ png_read_finish_row(png_structrp png_ptr)
 
       } while (png_ptr->num_rows == 0 || png_ptr->iwidth == 0);
 
-      if (png_ptr->pass < 7)
+      if (png_rust_pass_is_valid(png_ptr->rust_ptr))
          return;
    }
 
@@ -4412,7 +4411,7 @@ png_read_start_row(png_structrp png_ptr)
 #ifdef PNG_READ_TRANSFORMS_SUPPORTED
    png_init_read_transformations(png_ptr);
 #endif
-   if (png_ptr->interlaced != 0)
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       if ((png_ptr->transformations & PNG_INTERLACE) == 0)
          png_ptr->num_rows = (png_ptr->height + png_pass_yinc[0] - 1 -
@@ -4422,9 +4421,9 @@ png_read_start_row(png_structrp png_ptr)
          png_ptr->num_rows = png_ptr->height;
 
       png_ptr->iwidth = (png_ptr->width +
-          png_pass_inc[png_ptr->pass] - 1 -
-          png_pass_start[png_ptr->pass]) /
-          png_pass_inc[png_ptr->pass];
+          png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+          png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
+          png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
    }
 
    else
@@ -4602,7 +4601,7 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
       png_free(png_ptr, png_ptr->big_row_buf);
       png_free(png_ptr, png_ptr->big_prev_row);
 
-      if (png_ptr->interlaced != 0)
+      if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
          png_ptr->big_row_buf = (png_bytep)png_calloc(png_ptr,
              row_bytes + 48);
 

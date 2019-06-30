@@ -1,4 +1,3 @@
-
 /* pngwrite.c - general routines to write a PNG file
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -704,10 +703,10 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
       return;
 
    png_debug2(1, "in png_write_row (row %u, pass %d)",
-       png_ptr->row_number, png_ptr->pass);
+       png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
 
    /* Initialize transformations and other stuff if first time */
-   if (png_ptr->row_number == 0 && png_ptr->pass == 0)
+   if (png_ptr->row_number == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
    {
       /* Make sure we wrote the header info */
       if ((png_ptr->mode & PNG_WROTE_INFO_BEFORE_PLTE) == 0)
@@ -756,10 +755,10 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* If interlaced and not interested in row, return */
-   if (png_ptr->interlaced != 0 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
        (png_ptr->transformations & PNG_INTERLACE) != 0)
    {
-      switch (png_ptr->pass)
+      switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
          case 0:
             if ((png_ptr->row_number & 0x07) != 0)
@@ -843,10 +842,10 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* Handle interlacing */
-   if (png_ptr->interlaced && png_ptr->pass < 6 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) && png_rust_get_pass(png_ptr->rust_ptr) < 6 &&
        (png_ptr->transformations & PNG_INTERLACE) != 0)
    {
-      png_do_write_interlace(&row_info, png_ptr->row_buf + 1, png_ptr->pass);
+      png_do_write_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr));
       /* This should always get caught above, but still ... */
       if (row_info.width == 0)
       {
@@ -899,7 +898,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    png_write_find_filter(png_ptr, &row_info);
 
    if (png_ptr->write_row_fn != NULL)
-      (*(png_ptr->write_row_fn))(png_ptr, png_ptr->row_number, png_ptr->pass);
+      (*(png_ptr->write_row_fn))(png_ptr, png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
 }
 
 #ifdef PNG_WRITE_FLUSH_SUPPORTED

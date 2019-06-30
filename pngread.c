@@ -1,4 +1,3 @@
-
 /* pngread.c - read a PNG file
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -388,7 +387,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
       return;
 
    png_debug2(1, "in png_read_row (row %lu, pass %d)",
-       (unsigned long)png_ptr->row_number, png_ptr->pass);
+       (unsigned long)png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
 
    /* png_read_start_row sets the information (in particular iwidth) for this
     * interlace pass.
@@ -405,7 +404,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
 
 #ifdef PNG_WARNINGS_SUPPORTED
-   if (png_ptr->row_number == 0 && png_ptr->pass == 0)
+   if (png_ptr->row_number == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
    {
    /* Check for transforms that have been set but were defined out */
 #if defined(PNG_WRITE_INVERT_SUPPORTED) && !defined(PNG_READ_INVERT_SUPPORTED)
@@ -453,10 +452,10 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
     * untransformed) and, because of the libpng API for interlaced images, this
     * means we must transform before de-interlacing.
     */
-   if (png_ptr->interlaced != 0 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
        (png_ptr->transformations & PNG_INTERLACE) != 0)
    {
-      switch (png_ptr->pass)
+      switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
          case 0:
             if (png_ptr->row_number & 0x07)
@@ -585,11 +584,11 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED
    /* Expand interlaced rows to full size */
-   if (png_ptr->interlaced != 0 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
       (png_ptr->transformations & PNG_INTERLACE) != 0)
    {
-      if (png_ptr->pass < 6)
-         png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_ptr->pass,
+      if (png_rust_get_pass(png_ptr->rust_ptr) < 6)
+         png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr),
              png_ptr->transformations);
 
       if (dsp_row != NULL)
@@ -611,7 +610,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    png_read_finish_row(png_ptr);
 
    if (png_ptr->read_row_fn != NULL)
-      (*(png_ptr->read_row_fn))(png_ptr, png_ptr->row_number, png_ptr->pass);
+      (*(png_ptr->read_row_fn))(png_ptr, png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
 
 }
 #endif /* SEQUENTIAL_READ */
@@ -717,7 +716,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
    }
    else
    {
-      if (png_ptr->interlaced != 0 &&
+      if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
           (png_ptr->transformations & PNG_INTERLACE) == 0)
       {
          /* Caller called png_start_read_image or png_read_update_info without
@@ -736,7 +735,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
       pass = png_set_interlace_handling(png_ptr);
    }
 #else
-   if (png_ptr->interlaced)
+   if (png_rust_get_interlace(png_ptr->rust_ptr))
       png_error(png_ptr,
           "Cannot read interlaced image -- interlace handler disabled");
 
@@ -2953,7 +2952,7 @@ png_image_read_and_map(png_voidp argument)
     * form.  There is a local row buffer in display->local and this routine must
     * do the interlace handling.
     */
-   switch (png_ptr->interlaced)
+   switch (png_rust_get_interlace(png_ptr->rust_ptr))
    {
       case PNG_INTERLACE_NONE:
          passes = 1;
@@ -2980,7 +2979,7 @@ png_image_read_and_map(png_voidp argument)
          unsigned int     startx, stepx, stepy;
          png_uint_32      y;
 
-         if (png_ptr->interlaced == PNG_INTERLACE_ADAM7)
+         if (png_rust_get_interlace(png_ptr->rust_ptr) == PNG_INTERLACE_ADAM7)
          {
             /* The row may be empty for a short image: */
             if (PNG_PASS_COLS(width, pass) == 0)
@@ -3270,7 +3269,7 @@ png_image_read_composite(png_voidp argument)
    png_structrp png_ptr = image->opaque->png_ptr;
    int passes;
 
-   switch (png_ptr->interlaced)
+   switch (png_rust_get_interlace(png_ptr->rust_ptr))
    {
       case PNG_INTERLACE_NONE:
          passes = 1;
@@ -3297,7 +3296,7 @@ png_image_read_composite(png_voidp argument)
          unsigned int     startx, stepx, stepy;
          png_uint_32      y;
 
-         if (png_ptr->interlaced == PNG_INTERLACE_ADAM7)
+         if (png_rust_get_interlace(png_ptr->rust_ptr) == PNG_INTERLACE_ADAM7)
          {
             /* The row may be empty for a short image: */
             if (PNG_PASS_COLS(width, pass) == 0)
@@ -3419,7 +3418,7 @@ png_image_read_background(png_voidp argument)
       (image->format & PNG_FORMAT_FLAG_ALPHA) != 0)
       png_error(png_ptr, "unexpected 8-bit transformation");
 
-   switch (png_ptr->interlaced)
+   switch (png_rust_get_interlace(png_ptr->rust_ptr))
    {
       case PNG_INTERLACE_NONE:
          passes = 1;
@@ -3456,7 +3455,7 @@ png_image_read_background(png_voidp argument)
                unsigned int     startx, stepx, stepy;
                png_uint_32      y;
 
-               if (png_ptr->interlaced == PNG_INTERLACE_ADAM7)
+               if (png_rust_get_interlace(png_ptr->rust_ptr) == PNG_INTERLACE_ADAM7)
                {
                   /* The row may be empty for a short image: */
                   if (PNG_PASS_COLS(width, pass) == 0)
@@ -3595,7 +3594,7 @@ png_image_read_background(png_voidp argument)
 
                /* The 'x' start and step are adjusted to output components here.
                 */
-               if (png_ptr->interlaced == PNG_INTERLACE_ADAM7)
+               if (png_rust_get_interlace(png_ptr->rust_ptr) == PNG_INTERLACE_ADAM7)
                {
                   /* The row may be empty for a short image: */
                   if (PNG_PASS_COLS(width, pass) == 0)
@@ -3765,13 +3764,13 @@ png_image_read_direct(png_voidp argument)
          mode = PNG_ALPHA_PNG;
          output_gamma = PNG_DEFAULT_sRGB;
       }
-      
+
       if ((change & PNG_FORMAT_FLAG_ASSOCIATED_ALPHA) != 0)
       {
          mode = PNG_ALPHA_OPTIMIZED;
          change &= ~PNG_FORMAT_FLAG_ASSOCIATED_ALPHA;
       }
-      
+
       /* If 'do_local_background' is set check for the presence of gamma
        * correction; this is part of the work-round for the libpng bug
        * described above.

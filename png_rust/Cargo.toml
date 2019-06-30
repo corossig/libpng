@@ -1,0 +1,13 @@
+[package]
+name = "png_rust"
+version = "0.1.0"
+authors = ["Corentin Rossignon <Corentin.Rossignon@gmail.com>"]
+workspace = "../"
+edition = "2018"
+
+[lib]
+name = "png_rust"
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+crc = "1.8.1"

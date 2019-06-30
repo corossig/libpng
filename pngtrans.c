@@ -1,4 +1,3 @@
-
 /* pngtrans.c - transforms the data in a row (used by both readers and writers)
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -100,7 +99,7 @@ png_set_interlace_handling(png_structrp png_ptr)
 {
    png_debug(1, "in png_set_interlace handling");
 
-   if (png_ptr != 0 && png_ptr->interlaced != 0)
+   if (png_ptr != 0 && png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       png_ptr->transformations |= PNG_INTERLACE;
       return (7);
@@ -856,7 +855,7 @@ png_byte PNGAPI
 png_get_current_pass_number(png_const_structrp png_ptr)
 {
    if (png_ptr != NULL)
-      return png_ptr->pass;
+      return png_rust_get_pass(png_ptr->rust_ptr);
    return 8; /* invalid */
 }
 #endif /* USER_TRANSFORM_INFO */

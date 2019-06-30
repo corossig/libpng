@@ -1,4 +1,3 @@
-
 /* pngpread.c - read a png file in push mode
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -681,7 +680,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
           * damaged end code).  Treat that as a warning.
           */
          if (png_ptr->row_number >= png_ptr->num_rows ||
-             png_ptr->pass > 6)
+             ! png_rust_pass_is_valid(png_ptr->rust_ptr) )
             png_warning(png_ptr, "Truncated compressed data in IDAT");
 
          else
@@ -704,7 +703,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
           * here.
           */
          if (png_ptr->row_number >= png_ptr->num_rows ||
-             png_ptr->pass > 6)
+             ! png_rust_pass_is_valid(png_ptr->rust_ptr))
          {
             /* Extra data. */
             png_warning(png_ptr, "Extra compressed data in IDAT");
@@ -783,43 +782,43 @@ png_push_process_row(png_structrp png_ptr)
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED
    /* Expand interlaced rows to full size */
-   if (png_ptr->interlaced != 0 &&
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
        (png_ptr->transformations & PNG_INTERLACE) != 0)
    {
-      if (png_ptr->pass < 6)
-         png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_ptr->pass,
+      if (png_rust_get_pass(png_ptr->rust_ptr) < 6)
+         png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr),
              png_ptr->transformations);
 
-      switch (png_ptr->pass)
+      switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
          case 0:
          {
             int i;
-            for (i = 0; i < 8 && png_ptr->pass == 0; i++)
+            for (i = 0; i < 8 && png_rust_get_pass(png_ptr->rust_ptr) == 0; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr); /* Updates png_ptr->pass */
             }
 
-            if (png_ptr->pass == 2) /* Pass 1 might be empty */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 2) /* Pass 1 might be empty */
             {
-               for (i = 0; i < 4 && png_ptr->pass == 2; i++)
+               for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
                {
                   png_push_have_row(png_ptr, NULL);
                   png_read_push_finish_row(png_ptr);
                }
             }
 
-            if (png_ptr->pass == 4 && png_ptr->height <= 4)
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 4 && png_ptr->height <= 4)
             {
-               for (i = 0; i < 2 && png_ptr->pass == 4; i++)
+               for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
                   png_read_push_finish_row(png_ptr);
                }
             }
 
-            if (png_ptr->pass == 6 && png_ptr->height <= 4)
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 6 && png_ptr->height <= 4)
             {
                 png_push_have_row(png_ptr, NULL);
                 png_read_push_finish_row(png_ptr);
@@ -831,15 +830,15 @@ png_push_process_row(png_structrp png_ptr)
          case 1:
          {
             int i;
-            for (i = 0; i < 8 && png_ptr->pass == 1; i++)
+            for (i = 0; i < 8 && png_rust_get_pass(png_ptr->rust_ptr) == 1; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr);
             }
 
-            if (png_ptr->pass == 2) /* Skip top 4 generated rows */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 2) /* Skip top 4 generated rows */
             {
-               for (i = 0; i < 4 && png_ptr->pass == 2; i++)
+               for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
                {
                   png_push_have_row(png_ptr, NULL);
                   png_read_push_finish_row(png_ptr);
@@ -853,21 +852,21 @@ png_push_process_row(png_structrp png_ptr)
          {
             int i;
 
-            for (i = 0; i < 4 && png_ptr->pass == 2; i++)
+            for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr);
             }
 
-            for (i = 0; i < 4 && png_ptr->pass == 2; i++)
+            for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
             {
                png_push_have_row(png_ptr, NULL);
                png_read_push_finish_row(png_ptr);
             }
 
-            if (png_ptr->pass == 4) /* Pass 3 might be empty */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 4) /* Pass 3 might be empty */
             {
-               for (i = 0; i < 2 && png_ptr->pass == 4; i++)
+               for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
                   png_read_push_finish_row(png_ptr);
@@ -881,15 +880,15 @@ png_push_process_row(png_structrp png_ptr)
          {
             int i;
 
-            for (i = 0; i < 4 && png_ptr->pass == 3; i++)
+            for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 3; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr);
             }
 
-            if (png_ptr->pass == 4) /* Skip top two generated rows */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 4) /* Skip top two generated rows */
             {
-               for (i = 0; i < 2 && png_ptr->pass == 4; i++)
+               for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
                   png_read_push_finish_row(png_ptr);
@@ -903,19 +902,19 @@ png_push_process_row(png_structrp png_ptr)
          {
             int i;
 
-            for (i = 0; i < 2 && png_ptr->pass == 4; i++)
+            for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr);
             }
 
-            for (i = 0; i < 2 && png_ptr->pass == 4; i++)
+            for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
             {
                png_push_have_row(png_ptr, NULL);
                png_read_push_finish_row(png_ptr);
             }
 
-            if (png_ptr->pass == 6) /* Pass 5 might be empty */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 6) /* Pass 5 might be empty */
             {
                png_push_have_row(png_ptr, NULL);
                png_read_push_finish_row(png_ptr);
@@ -928,13 +927,13 @@ png_push_process_row(png_structrp png_ptr)
          {
             int i;
 
-            for (i = 0; i < 2 && png_ptr->pass == 5; i++)
+            for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 5; i++)
             {
                png_push_have_row(png_ptr, png_ptr->row_buf + 1);
                png_read_push_finish_row(png_ptr);
             }
 
-            if (png_ptr->pass == 6) /* Skip top generated row */
+            if (png_rust_get_pass(png_ptr->rust_ptr) == 6) /* Skip top generated row */
             {
                png_push_have_row(png_ptr, NULL);
                png_read_push_finish_row(png_ptr);
@@ -949,7 +948,7 @@ png_push_process_row(png_structrp png_ptr)
             png_push_have_row(png_ptr, png_ptr->row_buf + 1);
             png_read_push_finish_row(png_ptr);
 
-            if (png_ptr->pass != 6)
+            if (png_rust_get_pass(png_ptr->rust_ptr) != 6)
                break;
 
             png_push_have_row(png_ptr, NULL);
@@ -994,37 +993,37 @@ png_read_push_finish_row(png_structrp png_ptr)
       return;
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED
-   if (png_ptr->interlaced != 0)
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       png_ptr->row_number = 0;
       memset(png_ptr->prev_row, 0, png_ptr->rowbytes + 1);
 
       do
       {
-         png_ptr->pass++;
-         if ((png_ptr->pass == 1 && png_ptr->width < 5) ||
-             (png_ptr->pass == 3 && png_ptr->width < 3) ||
-             (png_ptr->pass == 5 && png_ptr->width < 2))
-            png_ptr->pass++;
+         png_rust_incr_pass(png_ptr->rust_ptr);
+         if ((png_rust_get_pass(png_ptr->rust_ptr) == 1 && png_ptr->width < 5) ||
+             (png_rust_get_pass(png_ptr->rust_ptr) == 3 && png_ptr->width < 3) ||
+             (png_rust_get_pass(png_ptr->rust_ptr) == 5 && png_ptr->width < 2))
+            png_rust_incr_pass(png_ptr->rust_ptr);
 
-         if (png_ptr->pass > 7)
-            png_ptr->pass--;
+         if (png_rust_get_pass(png_ptr->rust_ptr) > 7)
+            png_rust_decr_pass(png_ptr->rust_ptr);
 
-         if (png_ptr->pass >= 7)
+         if (png_rust_get_pass(png_ptr->rust_ptr) >= 7)
             break;
 
          png_ptr->iwidth = (png_ptr->width +
-             png_pass_inc[png_ptr->pass] - 1 -
-             png_pass_start[png_ptr->pass]) /
-             png_pass_inc[png_ptr->pass];
+             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+             png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
+             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
 
          if ((png_ptr->transformations & PNG_INTERLACE) != 0)
             break;
 
          png_ptr->num_rows = (png_ptr->height +
-             png_pass_yinc[png_ptr->pass] - 1 -
-             png_pass_ystart[png_ptr->pass]) /
-             png_pass_yinc[png_ptr->pass];
+             png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+             png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
+             png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
 
       } while (png_ptr->iwidth == 0 || png_ptr->num_rows == 0);
    }
@@ -1050,7 +1049,7 @@ png_push_have_row(png_structrp png_ptr, png_bytep row)
 {
    if (png_ptr->row_fn != NULL)
       (*(png_ptr->row_fn))(png_ptr, row, png_ptr->row_number,
-          (int)png_ptr->pass);
+          (int)png_rust_get_pass(png_ptr->rust_ptr));
 }
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED

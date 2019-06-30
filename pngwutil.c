@@ -1,4 +1,3 @@
-
 /* pngwutil.c - utilities to write a PNG file
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -210,7 +209,7 @@ png_image_size(png_structrp png_ptr)
 
    if (png_ptr->rowbytes < 32768 && h < 32768)
    {
-      if (png_ptr->interlaced != 0)
+      if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
       {
          /* Interlacing makes the image larger because of the replication of
           * both the filter byte and the padding to a byte boundary.
@@ -794,7 +793,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    /* Save the relevant information */
    png_ptr->bit_depth = (png_byte)bit_depth;
    png_ptr->color_type = (png_byte)color_type;
-   png_ptr->interlaced = (png_byte)interlace_type;
+   png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
    png_ptr->filter_type = (png_byte)filter_type;
 #endif
@@ -1974,7 +1973,7 @@ png_write_start_row(png_structrp png_ptr)
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* If interlaced, we need to set up width and height of pass */
-   if (png_ptr->interlaced != 0)
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       if ((png_ptr->transformations & PNG_INTERLACE) == 0)
       {
@@ -2031,12 +2030,12 @@ png_write_finish_row(png_structrp png_ptr)
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* If interlaced, go to next pass */
-   if (png_ptr->interlaced != 0)
+   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       png_ptr->row_number = 0;
       if ((png_ptr->transformations & PNG_INTERLACE) != 0)
       {
-         png_ptr->pass++;
+         png_rust_incr_pass(png_ptr->rust_ptr);
       }
 
       else
@@ -2044,20 +2043,20 @@ png_write_finish_row(png_structrp png_ptr)
          /* Loop until we find a non-zero width or height pass */
          do
          {
-            png_ptr->pass++;
+            png_rust_incr_pass(png_ptr->rust_ptr);
 
-            if (png_ptr->pass >= 7)
+            if ( ! png_rust_pass_is_valid(png_ptr->rust_ptr) )
                break;
 
             png_ptr->usr_width = (png_ptr->width +
-                png_pass_inc[png_ptr->pass] - 1 -
-                png_pass_start[png_ptr->pass]) /
-                png_pass_inc[png_ptr->pass];
+                png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+                png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
+                png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
 
             png_ptr->num_rows = (png_ptr->height +
-                png_pass_yinc[png_ptr->pass] - 1 -
-                png_pass_ystart[png_ptr->pass]) /
-                png_pass_yinc[png_ptr->pass];
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
+                png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
 
             if ((png_ptr->transformations & PNG_INTERLACE) != 0)
                break;
@@ -2067,7 +2066,7 @@ png_write_finish_row(png_structrp png_ptr)
       }
 
       /* Reset the row above the image for the next pass */
-      if (png_ptr->pass < 7)
+      if (png_rust_pass_is_valid(png_ptr->rust_ptr))
       {
          if (png_ptr->prev_row != NULL)
             memset(png_ptr->prev_row, 0,

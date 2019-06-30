@@ -1,4 +1,3 @@
-
 /* pngstruct.h - header file for PNG reference library
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -19,6 +18,9 @@
 
 #ifndef PNGSTRUCT_H
 #define PNGSTRUCT_H
+
+#include "pngrust.h"
+
 /* zlib.h defines the structure z_stream, an instance of which is included
  * in this structure and is required for decompressing the LZ compressed
  * data in PNG files.
@@ -245,10 +247,6 @@ struct png_struct_def
 #endif
 
    png_uint_16 num_trans;     /* number of transparency values */
-   png_byte compression;      /* file compression type (always 0) */
-   png_byte filter;           /* file filter type (always 0) */
-   png_byte interlaced;       /* PNG_INTERLACE_NONE, PNG_INTERLACE_ADAM7 */
-   png_byte pass;             /* current interlace pass (0 - 6) */
    png_byte do_filter;        /* row filter flags (see PNG_FILTER_ in png.h ) */
    png_byte color_type;       /* color type of file */
    png_byte bit_depth;        /* bit depth of file */
@@ -485,5 +483,7 @@ struct png_struct_def
    png_colorspace   colorspace;
 #endif
 #endif
+
+   PngRust* rust_ptr;
 };
 #endif /* PNGSTRUCT_H */
