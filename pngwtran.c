@@ -1,4 +1,3 @@
-
 /* pngwtran.c - transforms the data in a row for PNG writers
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -506,7 +505,7 @@ png_do_write_transformations(png_structrp png_ptr, png_row_infop row_info)
       return;
 
 #ifdef PNG_WRITE_USER_TRANSFORM_SUPPORTED
-   if ((png_ptr->transformations & PNG_USER_TRANSFORM) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM))
       if (png_ptr->write_user_transform_fn != NULL)
          (*(png_ptr->write_user_transform_fn)) /* User write transform
                                                  function */
@@ -522,52 +521,52 @@ png_do_write_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_WRITE_FILLER_SUPPORTED
-   if ((png_ptr->transformations & PNG_FILLER) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
       png_do_strip_channel(row_info, png_ptr->row_buf + 1,
-          !(png_ptr->flags & PNG_FLAG_FILLER_AFTER));
+                           ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_FILLER_AFTER));
 #endif
 
 #ifdef PNG_WRITE_PACKSWAP_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
       png_do_packswap(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_WRITE_PACK_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACK) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
       png_do_pack(row_info, png_ptr->row_buf + 1,
           (png_uint_32)png_ptr->bit_depth);
 #endif
 
 #ifdef PNG_WRITE_SWAP_SUPPORTED
 #  ifdef PNG_16BIT_SUPPORTED
-   if ((png_ptr->transformations & PNG_SWAP_BYTES) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
       png_do_swap(row_info, png_ptr->row_buf + 1);
 #  endif
 #endif
 
 #ifdef PNG_WRITE_SHIFT_SUPPORTED
-   if ((png_ptr->transformations & PNG_SHIFT) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
       png_do_shift(row_info, png_ptr->row_buf + 1,
            &(png_ptr->shift));
 #endif
 
 #ifdef PNG_WRITE_SWAP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_SWAP_ALPHA) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA))
       png_do_write_swap_alpha(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_WRITE_INVERT_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_INVERT_ALPHA) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
       png_do_write_invert_alpha(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_WRITE_BGR_SUPPORTED
-   if ((png_ptr->transformations & PNG_BGR) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
       png_do_bgr(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_WRITE_INVERT_SUPPORTED
-   if ((png_ptr->transformations & PNG_INVERT_MONO) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
       png_do_invert(row_info, png_ptr->row_buf + 1);
 #endif
 }

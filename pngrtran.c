@@ -1,4 +1,3 @@
-
 /* pngrtran.c - transforms the data in a row for PNG readers
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -47,14 +46,14 @@ png_set_crc_action(png_structrp png_ptr, int crit_action, int ancil_action)
          break;
 
       case PNG_CRC_WARN_USE:                               /* Warn/use data */
-         png_ptr->flags &= ~PNG_FLAG_CRC_CRITICAL_MASK;
-         png_ptr->flags |= PNG_FLAG_CRC_CRITICAL_USE;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_MASK);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_USE);
          break;
 
       case PNG_CRC_QUIET_USE:                             /* Quiet/use data */
-         png_ptr->flags &= ~PNG_FLAG_CRC_CRITICAL_MASK;
-         png_ptr->flags |= PNG_FLAG_CRC_CRITICAL_USE |
-                           PNG_FLAG_CRC_CRITICAL_IGNORE;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_MASK);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_USE |
+                            PNG_FLAG_CRC_CRITICAL_IGNORE);
          break;
 
       case PNG_CRC_WARN_DISCARD:    /* Not a valid action for critical data */
@@ -65,7 +64,7 @@ png_set_crc_action(png_structrp png_ptr, int crit_action, int ancil_action)
 
       case PNG_CRC_DEFAULT:
       default:
-         png_ptr->flags &= ~PNG_FLAG_CRC_CRITICAL_MASK;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_MASK);
          break;
    }
 
@@ -76,26 +75,26 @@ png_set_crc_action(png_structrp png_ptr, int crit_action, int ancil_action)
          break;
 
       case PNG_CRC_WARN_USE:                              /* Warn/use data */
-         png_ptr->flags &= ~PNG_FLAG_CRC_ANCILLARY_MASK;
-         png_ptr->flags |= PNG_FLAG_CRC_ANCILLARY_USE;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_USE);
          break;
 
       case PNG_CRC_QUIET_USE:                            /* Quiet/use data */
-         png_ptr->flags &= ~PNG_FLAG_CRC_ANCILLARY_MASK;
-         png_ptr->flags |= PNG_FLAG_CRC_ANCILLARY_USE |
-                           PNG_FLAG_CRC_ANCILLARY_NOWARN;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_USE |
+                            PNG_FLAG_CRC_ANCILLARY_NOWARN);
          break;
 
       case PNG_CRC_ERROR_QUIT:                               /* Error/quit */
-         png_ptr->flags &= ~PNG_FLAG_CRC_ANCILLARY_MASK;
-         png_ptr->flags |= PNG_FLAG_CRC_ANCILLARY_NOWARN;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_NOWARN);
          break;
 
       case PNG_CRC_WARN_DISCARD:                      /* Warn/discard data */
 
       case PNG_CRC_DEFAULT:
       default:
-         png_ptr->flags &= ~PNG_FLAG_CRC_ANCILLARY_MASK;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK);
          break;
    }
 }
@@ -111,17 +110,17 @@ png_rtran_ok(png_structrp png_ptr, int need_IHDR)
 {
    if (png_ptr != NULL)
    {
-      if ((png_ptr->flags & PNG_FLAG_ROW_INIT) != 0)
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
          png_app_error(png_ptr,
              "invalid after png_start_read_image or png_read_update_info");
 
-      else if (need_IHDR && (png_ptr->mode & PNG_HAVE_IHDR) == 0)
+      else if (need_IHDR && ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
          png_app_error(png_ptr, "invalid before the PNG header has been read");
 
       else
       {
          /* Turn on failure to initialize correctly for all transforms. */
-         png_ptr->flags |= PNG_FLAG_DETECT_UNINITIALIZED;
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_DETECT_UNINITIALIZED);
 
          return 1; /* Ok */
       }
@@ -149,17 +148,17 @@ png_set_background_fixed(png_structrp png_ptr,
       return;
    }
 
-   png_ptr->transformations |= PNG_COMPOSE | PNG_STRIP_ALPHA;
-   png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-   png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_COMPOSE | PNG_STRIP_ALPHA);
+   png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+   png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
 
    png_ptr->background = *background_color;
    png_ptr->background_gamma = background_gamma;
    png_ptr->background_gamma_type = (png_byte)(background_gamma_code);
    if (need_expand != 0)
-      png_ptr->transformations |= PNG_BACKGROUND_EXPAND;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND);
    else
-      png_ptr->transformations &= ~PNG_BACKGROUND_EXPAND;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND);
 }
 
 #  ifdef PNG_FLOATING_POINT_SUPPORTED
@@ -187,7 +186,7 @@ png_set_scale_16(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= PNG_SCALE_16_TO_8;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8);
 }
 #endif
 
@@ -201,7 +200,7 @@ png_set_strip_16(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= PNG_16_TO_8;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_16_TO_8);
 }
 #endif
 
@@ -214,7 +213,7 @@ png_set_strip_alpha(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= PNG_STRIP_ALPHA;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA);
 }
 #endif
 
@@ -235,7 +234,7 @@ translate_gamma_flags(png_structrp png_ptr, png_fixed_point output_gamma,
        * sRGB value.  (This is a side effect of using this function!)
        */
 #     ifdef PNG_READ_sRGB_SUPPORTED
-         png_ptr->flags |= PNG_FLAG_ASSUME_sRGB;
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ASSUME_sRGB);
 #     else
          PNG_UNUSED(png_ptr)
 #     endif
@@ -334,29 +333,29 @@ png_set_alpha_mode_fixed(png_structrp png_ptr, int mode,
    {
       case PNG_ALPHA_PNG:        /* default: png standard */
          /* No compose, but it may be set by png_set_background! */
-         png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-         png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
          break;
 
       case PNG_ALPHA_ASSOCIATED: /* color channels premultiplied */
          compose = 1;
-         png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-         png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
          /* The output is linear: */
          output_gamma = PNG_FP_1;
          break;
 
       case PNG_ALPHA_OPTIMIZED:  /* associated, non-opaque pixels linear */
          compose = 1;
-         png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-         png_ptr->flags |= PNG_FLAG_OPTIMIZE_ALPHA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
          /* output_gamma records the encoding of opaque pixels! */
          break;
 
       case PNG_ALPHA_BROKEN:     /* associated, non-linear, alpha encoded */
          compose = 1;
-         png_ptr->transformations |= PNG_ENCODE_ALPHA;
-         png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
          break;
 
       default:
@@ -385,13 +384,13 @@ png_set_alpha_mode_fixed(png_structrp png_ptr, int mode,
       memset(&png_ptr->background, 0, (sizeof png_ptr->background));
       png_ptr->background_gamma = png_ptr->colorspace.gamma; /* just in case */
       png_ptr->background_gamma_type = PNG_BACKGROUND_GAMMA_FILE;
-      png_ptr->transformations &= ~PNG_BACKGROUND_EXPAND;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND);
 
-      if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
          png_error(png_ptr,
              "conflicting calls to set alpha mode and background");
 
-      png_ptr->transformations |= PNG_COMPOSE;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_COMPOSE);
    }
 }
 
@@ -434,7 +433,7 @@ png_set_quantize(png_structrp png_ptr, png_colorp palette,
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= PNG_QUANTIZE;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_QUANTIZE);
 
    if (full_quantize == 0)
    {
@@ -876,7 +875,7 @@ png_set_expand(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= (PNG_EXPAND | PNG_EXPAND_tRNS);
+   png_rust_add_transformations(png_ptr->rust_ptr, (PNG_EXPAND | PNG_EXPAND_tRNS));
 }
 
 /* GRR 19990627:  the following three functions currently are identical
@@ -906,7 +905,7 @@ png_set_palette_to_rgb(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= (PNG_EXPAND | PNG_EXPAND_tRNS);
+   png_rust_add_transformations(png_ptr->rust_ptr, (PNG_EXPAND | PNG_EXPAND_tRNS));
 }
 
 /* Expand grayscale images of less than 8-bit depth to 8 bits. */
@@ -918,7 +917,7 @@ png_set_expand_gray_1_2_4_to_8(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= PNG_EXPAND;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_EXPAND);
 }
 
 /* Expand tRNS chunks to alpha channels. */
@@ -930,7 +929,7 @@ png_set_tRNS_to_alpha(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= (PNG_EXPAND | PNG_EXPAND_tRNS);
+   png_rust_add_transformations(png_ptr->rust_ptr, (PNG_EXPAND | PNG_EXPAND_tRNS));
 }
 #endif /* READ_EXPAND */
 
@@ -946,7 +945,7 @@ png_set_expand_16(png_structrp png_ptr)
    if (png_rtran_ok(png_ptr, 0) == 0)
       return;
 
-   png_ptr->transformations |= (PNG_EXPAND_16 | PNG_EXPAND | PNG_EXPAND_tRNS);
+   png_rust_add_transformations(png_ptr->rust_ptr, (PNG_EXPAND_16 | PNG_EXPAND | PNG_EXPAND_tRNS));
 }
 #endif
 
@@ -961,7 +960,7 @@ png_set_gray_to_rgb(png_structrp png_ptr)
 
    /* Because rgb must be 8 bits or more: */
    png_set_expand_gray_1_2_4_to_8(png_ptr);
-   png_ptr->transformations |= PNG_GRAY_TO_RGB;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB);
 }
 #endif
 
@@ -980,15 +979,15 @@ png_set_rgb_to_gray_fixed(png_structrp png_ptr, int error_action,
    switch (error_action)
    {
       case PNG_ERROR_ACTION_NONE:
-         png_ptr->transformations |= PNG_RGB_TO_GRAY;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY);
          break;
 
       case PNG_ERROR_ACTION_WARN:
-         png_ptr->transformations |= PNG_RGB_TO_GRAY_WARN;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY_WARN);
          break;
 
       case PNG_ERROR_ACTION_ERROR:
-         png_ptr->transformations |= PNG_RGB_TO_GRAY_ERR;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY_ERR);
          break;
 
       default:
@@ -997,7 +996,7 @@ png_set_rgb_to_gray_fixed(png_structrp png_ptr, int error_action,
 
    if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
 #ifdef PNG_READ_EXPAND_SUPPORTED
-      png_ptr->transformations |= PNG_EXPAND;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_EXPAND);
 #else
    {
       /* Make this an error in 1.6 because otherwise the application may assume
@@ -1006,7 +1005,7 @@ png_set_rgb_to_gray_fixed(png_structrp png_ptr, int error_action,
       png_error(png_ptr,
           "Cannot do RGB_TO_GRAY without EXPAND_SUPPORTED");
 
-      /* png_ptr->transformations &= ~PNG_RGB_TO_GRAY; */
+      /* png_rust_remove_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY); */
    }
 #endif
    {
@@ -1076,7 +1075,7 @@ png_set_read_user_transform_fn(png_structrp png_ptr, png_user_transform_ptr
    png_debug(1, "in png_set_read_user_transform_fn");
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
-   png_ptr->transformations |= PNG_USER_TRANSFORM;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM);
    png_ptr->read_user_transform_fn = read_user_transform_fn;
 #endif
 }
@@ -1154,11 +1153,11 @@ png_init_palette_transformations(png_structrp png_ptr)
        * required, however if the alpha is 0 or 1 throughout OPTIMIZE_ALPHA
        * and ENCODE_ALPHA are irrelevant.
        */
-      png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-      png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+      png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
 
       if (input_has_transparency == 0)
-         png_ptr->transformations &= ~(PNG_COMPOSE | PNG_BACKGROUND_EXPAND);
+         png_rust_remove_transformations(png_ptr->rust_ptr, (PNG_COMPOSE | PNG_BACKGROUND_EXPAND));
    }
 
 #if defined(PNG_READ_EXPAND_SUPPORTED) && defined(PNG_READ_BACKGROUND_SUPPORTED)
@@ -1170,8 +1169,7 @@ png_init_palette_transformations(png_structrp png_ptr)
    /* The following code cannot be entered in the alpha pre-multiplication case
     * because PNG_BACKGROUND_EXPAND is cancelled below.
     */
-   if ((png_ptr->transformations & PNG_BACKGROUND_EXPAND) != 0 &&
-       (png_ptr->transformations & PNG_EXPAND) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND | PNG_EXPAND))
    {
       {
          png_ptr->background.red   =
@@ -1182,9 +1180,9 @@ png_init_palette_transformations(png_structrp png_ptr)
              png_ptr->palette[png_ptr->background.index].blue;
 
 #ifdef PNG_READ_INVERT_ALPHA_SUPPORTED
-         if ((png_ptr->transformations & PNG_INVERT_ALPHA) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
          {
-            if ((png_ptr->transformations & PNG_EXPAND_tRNS) == 0)
+            if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
             {
                /* Invert the alpha channel (in tRNS) unless the pixels are
                 * going to be expanded, in which case leave it for later
@@ -1220,12 +1218,12 @@ png_init_rgb_transformations(png_structrp png_ptr)
        * and ENCODE_ALPHA are irrelevant.
        */
 #     ifdef PNG_READ_ALPHA_MODE_SUPPORTED
-         png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-         png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
 #     endif
 
       if (input_has_transparency == 0)
-         png_ptr->transformations &= ~(PNG_COMPOSE | PNG_BACKGROUND_EXPAND);
+         png_rust_remove_transformations(png_ptr->rust_ptr, (PNG_COMPOSE | PNG_BACKGROUND_EXPAND));
    }
 
 #if defined(PNG_READ_EXPAND_SUPPORTED) && defined(PNG_READ_BACKGROUND_SUPPORTED)
@@ -1237,8 +1235,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
    /* The following code cannot be entered in the alpha pre-multiplication case
     * because PNG_BACKGROUND_EXPAND is cancelled below.
     */
-   if ((png_ptr->transformations & PNG_BACKGROUND_EXPAND) != 0 &&
-       (png_ptr->transformations & PNG_EXPAND) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND | PNG_EXPAND) &&
        (png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
        /* i.e., GRAY or GRAY_ALPHA */
    {
@@ -1277,7 +1274,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
          png_ptr->background.red = png_ptr->background.green =
             png_ptr->background.blue = (png_uint_16)gray;
 
-         if ((png_ptr->transformations & PNG_EXPAND_tRNS) == 0)
+         if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
          {
             png_ptr->trans_color.red = png_ptr->trans_color.green =
                png_ptr->trans_color.blue = (png_uint_16)trans_gray;
@@ -1354,10 +1351,10 @@ png_init_read_transformations(png_structrp png_ptr)
        * row loop.
        */
       if (gamma_correction != 0)
-         png_ptr->transformations |= PNG_GAMMA;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_GAMMA);
 
       else
-         png_ptr->transformations &= ~PNG_GAMMA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_GAMMA);
    }
 #endif
 
@@ -1391,17 +1388,17 @@ png_init_read_transformations(png_structrp png_ptr)
     * 23) PNG_USER_TRANSFORM [must be last]
     */
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_STRIP_ALPHA) != 0 &&
-       (png_ptr->transformations & PNG_COMPOSE) == 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA) &&
+       ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) )
    {
       /* Stripping the alpha channel happens immediately after the 'expand'
        * transformations, before all other transformation, so it cancels out
        * the alpha handling.  It has the side effect negating the effect of
        * PNG_EXPAND_tRNS too:
        */
-      png_ptr->transformations &= ~(PNG_BACKGROUND_EXPAND | PNG_ENCODE_ALPHA |
-         PNG_EXPAND_tRNS);
-      png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+      png_rust_remove_transformations(png_ptr->rust_ptr, (PNG_BACKGROUND_EXPAND | PNG_ENCODE_ALPHA |
+                                                          PNG_EXPAND_tRNS));
+      png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
 
       /* Kill the tRNS chunk itself too.  Prior to 1.5.4 this did not happen
        * so transparency information would remain just so long as it wasn't
@@ -1420,8 +1417,8 @@ png_init_read_transformations(png_structrp png_ptr)
     */
    if (png_gamma_significant(png_ptr->screen_gamma) == 0)
    {
-      png_ptr->transformations &= ~PNG_ENCODE_ALPHA;
-      png_ptr->flags &= ~PNG_FLAG_OPTIMIZE_ALPHA;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA);
+      png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
    }
 #endif
 
@@ -1429,7 +1426,7 @@ png_init_read_transformations(png_structrp png_ptr)
    /* Make sure the coefficients for the rgb to gray conversion are set
     * appropriately.
     */
-   if ((png_ptr->transformations & PNG_RGB_TO_GRAY) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
       png_colorspace_set_rgb_coefficients(png_ptr);
 #endif
 
@@ -1450,28 +1447,28 @@ png_init_read_transformations(png_structrp png_ptr)
     * png_set_background, along with the bit depth, then the code has a record
     * of exactly what color space the background is currently in.
     */
-   if ((png_ptr->transformations & PNG_BACKGROUND_EXPAND) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND))
    {
       /* PNG_BACKGROUND_EXPAND: the background is in the file color space, so if
        * the file was grayscale the background value is gray.
        */
       if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
-         png_ptr->mode |= PNG_BACKGROUND_IS_GRAY;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY);
    }
 
-   else if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+   else if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
    {
       /* PNG_COMPOSE: png_set_background was called with need_expand false,
        * so the color is in the color space of the output or png_set_alpha_mode
        * was called and the color is black.  Ignore RGB_TO_GRAY because that
        * happens before GRAY_TO_RGB.
        */
-      if ((png_ptr->transformations & PNG_GRAY_TO_RGB) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB))
       {
          if (png_ptr->background.red == png_ptr->background.green &&
              png_ptr->background.red == png_ptr->background.blue)
          {
-            png_ptr->mode |= PNG_BACKGROUND_IS_GRAY;
+            png_rust_add_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY);
             png_ptr->background.gray = png_ptr->background.red;
          }
       }
@@ -1498,9 +1495,8 @@ png_init_read_transformations(png_structrp png_ptr)
 
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) && \
    defined(PNG_READ_EXPAND_16_SUPPORTED)
-   if ((png_ptr->transformations & PNG_EXPAND_16) != 0 &&
-       (png_ptr->transformations & PNG_COMPOSE) != 0 &&
-       (png_ptr->transformations & PNG_BACKGROUND_EXPAND) == 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16 || PNG_COMPOSE) &&
+       ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND) &&
        png_ptr->bit_depth != 16)
    {
       /* TODO: fix this.  Because the expand_16 operation is after the compose
@@ -1525,9 +1521,9 @@ png_init_read_transformations(png_structrp png_ptr)
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) && \
    (defined(PNG_READ_SCALE_16_TO_8_SUPPORTED) || \
    defined(PNG_READ_STRIP_16_TO_8_SUPPORTED))
-   if ((png_ptr->transformations & (PNG_16_TO_8|PNG_SCALE_16_TO_8)) != 0 &&
-       (png_ptr->transformations & PNG_COMPOSE) != 0 &&
-       (png_ptr->transformations & PNG_BACKGROUND_EXPAND) == 0 &&
+   if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_16_TO_8|PNG_SCALE_16_TO_8)) &&
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
+       ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND) &&
        png_ptr->bit_depth == 16)
    {
       /* On the other hand, if a 16-bit file is to be reduced to 8-bits per
@@ -1571,24 +1567,24 @@ png_init_read_transformations(png_structrp png_ptr)
     * file gamma - if it is not 1.0 both RGB_TO_GRAY and COMPOSE need the
     * tables.
     */
-   if ((png_ptr->transformations & PNG_GAMMA) != 0 ||
-       ((png_ptr->transformations & PNG_RGB_TO_GRAY) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GAMMA) ||
+       (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY) &&
         (png_gamma_significant(png_ptr->colorspace.gamma) != 0 ||
          png_gamma_significant(png_ptr->screen_gamma) != 0)) ||
-        ((png_ptr->transformations & PNG_COMPOSE) != 0 &&
+        (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
          (png_gamma_significant(png_ptr->colorspace.gamma) != 0 ||
           png_gamma_significant(png_ptr->screen_gamma) != 0
 #  ifdef PNG_READ_BACKGROUND_SUPPORTED
          || (png_ptr->background_gamma_type == PNG_BACKGROUND_GAMMA_UNIQUE &&
            png_gamma_significant(png_ptr->background_gamma) != 0)
 #  endif
-        )) || ((png_ptr->transformations & PNG_ENCODE_ALPHA) != 0 &&
+        )) || (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA) &&
        png_gamma_significant(png_ptr->screen_gamma) != 0))
    {
       png_build_gamma_table(png_ptr, png_ptr->bit_depth);
 
 #ifdef PNG_READ_BACKGROUND_SUPPORTED
-      if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
       {
          /* Issue a warning about this combination: because RGB_TO_GRAY is
           * optimized to do the gamma transform if present yet do_background has
@@ -1596,7 +1592,7 @@ png_init_read_transformations(png_structrp png_ptr)
           * double-gamma-correction happens.  This is true in all versions of
           * libpng to date.
           */
-         if ((png_ptr->transformations & PNG_RGB_TO_GRAY) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
             png_warning(png_ptr,
                 "libpng does not support gamma+background+rgb_to_gray");
 
@@ -1723,7 +1719,7 @@ png_init_read_transformations(png_structrp png_ptr)
              * place.  This seems inconsistent with the general treatment of the
              * transformations elsewhere.
              */
-            png_ptr->transformations &= ~(PNG_COMPOSE | PNG_GAMMA);
+            png_rust_remove_transformations(png_ptr->rust_ptr, (PNG_COMPOSE | PNG_GAMMA));
          } /* color_type == PNG_COLOR_TYPE_PALETTE */
 
          /* if (png_ptr->background_gamma_type!=PNG_BACKGROUND_GAMMA_UNKNOWN) */
@@ -1810,7 +1806,7 @@ png_init_read_transformations(png_structrp png_ptr)
             /* The background is now in screen gamma: */
             png_ptr->background_gamma_type = PNG_BACKGROUND_GAMMA_SCREEN;
          } /* color_type != PNG_COLOR_TYPE_PALETTE */
-      }/* png_ptr->transformations & PNG_BACKGROUND */
+      }/* png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND) */
 
       else
       /* Transformation does not include PNG_BACKGROUND */
@@ -1818,8 +1814,8 @@ png_init_read_transformations(png_structrp png_ptr)
       if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
          /* RGB_TO_GRAY needs to have non-gamma-corrected values! */
-         && ((png_ptr->transformations & PNG_EXPAND) == 0 ||
-         (png_ptr->transformations & PNG_RGB_TO_GRAY) == 0)
+         && ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND) ||
+          ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
 #endif
          )
       {
@@ -1838,7 +1834,7 @@ png_init_read_transformations(png_structrp png_ptr)
          }
 
          /* Done the gamma correction. */
-         png_ptr->transformations &= ~PNG_GAMMA;
+         png_rust_remove_transformations(png_ptr->rust_ptr, PNG_GAMMA);
       } /* color_type == PALETTE && !PNG_BACKGROUND transformation */
    }
 #ifdef PNG_READ_BACKGROUND_SUPPORTED
@@ -1848,7 +1844,7 @@ png_init_read_transformations(png_structrp png_ptr)
 
 #ifdef PNG_READ_BACKGROUND_SUPPORTED
    /* No GAMMA transformation (see the hanging else 4 lines above) */
-   if ((png_ptr->transformations & PNG_COMPOSE) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE))
    {
       int i;
@@ -1881,20 +1877,20 @@ png_init_read_transformations(png_structrp png_ptr)
          }
       }
 
-      png_ptr->transformations &= ~PNG_COMPOSE;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_COMPOSE);
    }
 #endif /* READ_BACKGROUND */
 
 #ifdef PNG_READ_SHIFT_SUPPORTED
-   if ((png_ptr->transformations & PNG_SHIFT) != 0 &&
-       (png_ptr->transformations & PNG_EXPAND) == 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT) &&
+       ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND) &&
        (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE))
    {
       int i;
       int istop = png_ptr->num_palette;
       int shift = 8 - png_ptr->sig_bit.red;
 
-      png_ptr->transformations &= ~PNG_SHIFT;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_SHIFT);
 
       /* significant bits can be in the range 1 to 7 for a meaningful result, if
        * the number of significant bits is 0 then no shift is done (this is an
@@ -1942,7 +1938,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
    png_debug(1, "in png_read_transform_info");
 
 #ifdef PNG_READ_EXPAND_SUPPORTED
-   if ((png_ptr->transformations & PNG_EXPAND) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
    {
       if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
       {
@@ -1966,7 +1962,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
       {
          if (png_ptr->num_trans != 0)
          {
-            if ((png_ptr->transformations & PNG_EXPAND_tRNS) != 0)
+            if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
                info_ptr->color_type |= PNG_COLOR_MASK_ALPHA;
          }
          if (info_ptr->bit_depth < 8)
@@ -1982,7 +1978,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
    /* The following is almost certainly wrong unless the background value is in
     * the screen space!
     */
-   if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
       info_ptr->background = png_ptr->background;
 #endif
 
@@ -2003,12 +1999,12 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
    {
 #  ifdef PNG_READ_16BIT_SUPPORTED
 #     ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
-         if ((png_ptr->transformations & PNG_SCALE_16_TO_8) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8))
             info_ptr->bit_depth = 8;
 #     endif
 
 #     ifdef PNG_READ_STRIP_16_TO_8_SUPPORTED
-         if ((png_ptr->transformations & PNG_16_TO_8) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_16_TO_8))
             info_ptr->bit_depth = 8;
 #     endif
 
@@ -2022,12 +2018,12 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
           * default.  This code works because if PNG_SCALE_16_TO_8 is already
           * set the code below will do that in preference to the chop.
           */
-         png_ptr->transformations |= PNG_16_TO_8;
+         png_rust_add_transformations(png_ptr->rust_ptr, PNG_16_TO_8);
          info_ptr->bit_depth = 8;
 #     else
 
 #        ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
-            png_ptr->transformations |= PNG_SCALE_16_TO_8;
+            png_rust_add_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8);
             info_ptr->bit_depth = 8;
 #        else
 
@@ -2038,19 +2034,19 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
    }
 
 #ifdef PNG_READ_GRAY_TO_RGB_SUPPORTED
-   if ((png_ptr->transformations & PNG_GRAY_TO_RGB) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB))
       info_ptr->color_type = (png_byte)(info_ptr->color_type |
          PNG_COLOR_MASK_COLOR);
 #endif
 
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
-   if ((png_ptr->transformations & PNG_RGB_TO_GRAY) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
       info_ptr->color_type = (png_byte)(info_ptr->color_type &
          ~PNG_COLOR_MASK_COLOR);
 #endif
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
-   if ((png_ptr->transformations & PNG_QUANTIZE) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_QUANTIZE))
    {
       if (((info_ptr->color_type == PNG_COLOR_TYPE_RGB) ||
           (info_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA)) &&
@@ -2062,7 +2058,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
 #endif
 
 #ifdef PNG_READ_EXPAND_16_SUPPORTED
-   if ((png_ptr->transformations & PNG_EXPAND_16) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16) &&
        info_ptr->bit_depth == 8 &&
        info_ptr->color_type != PNG_COLOR_TYPE_PALETTE)
    {
@@ -2071,7 +2067,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
 #endif
 
 #ifdef PNG_READ_PACK_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACK) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK) &&
        (info_ptr->bit_depth < 8))
       info_ptr->bit_depth = 8;
 #endif
@@ -2086,7 +2082,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
       info_ptr->channels = 1;
 
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_STRIP_ALPHA) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA))
    {
       info_ptr->color_type = (png_byte)(info_ptr->color_type &
          ~PNG_COLOR_MASK_ALPHA);
@@ -2099,20 +2095,20 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
 
 #ifdef PNG_READ_FILLER_SUPPORTED
    /* STRIP_ALPHA and FILLER allowed:  MASK_ALPHA bit stripped above */
-   if ((png_ptr->transformations & PNG_FILLER) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER) &&
        (info_ptr->color_type == PNG_COLOR_TYPE_RGB ||
        info_ptr->color_type == PNG_COLOR_TYPE_GRAY))
    {
       info_ptr->channels++;
       /* If adding a true alpha channel not just filler */
-      if ((png_ptr->transformations & PNG_ADD_ALPHA) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ADD_ALPHA))
          info_ptr->color_type |= PNG_COLOR_MASK_ALPHA;
    }
 #endif
 
 #if defined(PNG_USER_TRANSFORM_PTR_SUPPORTED) && \
 defined(PNG_READ_USER_TRANSFORM_SUPPORTED)
-   if ((png_ptr->transformations & PNG_USER_TRANSFORM) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM))
    {
       if (png_ptr->user_transform_depth != 0)
          info_ptr->bit_depth = png_ptr->user_transform_depth;
@@ -3207,7 +3203,7 @@ png_do_compose(png_row_infop row_info, png_bytep row, png_structrp png_ptr)
    png_const_uint_16pp gamma_16_from_1 = png_ptr->gamma_16_from_1;
    png_const_uint_16pp gamma_16_to_1 = png_ptr->gamma_16_to_1;
    int gamma_shift = png_ptr->gamma_shift;
-   int optimize = (png_ptr->flags & PNG_FLAG_OPTIMIZE_ALPHA) != 0;
+   bool optimize = png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_OPTIMIZE_ALPHA);
 #endif
 
    png_bytep sp;
@@ -4756,8 +4752,8 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     * all transformations, however in practice the ROW_INIT always gets done on
     * demand, if necessary.
     */
-   if ((png_ptr->flags & PNG_FLAG_DETECT_UNINITIALIZED) != 0 &&
-       (png_ptr->flags & PNG_FLAG_ROW_INIT) == 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_DETECT_UNINITIALIZED) &&
+       ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
    {
       /* Application has failed to call either png_read_start_image() or
        * png_read_update_info() after setting transforms that expand pixels.
@@ -4767,7 +4763,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
    }
 
 #ifdef PNG_READ_EXPAND_SUPPORTED
-   if ((png_ptr->transformations & PNG_EXPAND) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
    {
       if (row_info->color_type == PNG_COLOR_TYPE_PALETTE)
       {
@@ -4790,7 +4786,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
       else
       {
          if (png_ptr->num_trans != 0 &&
-             (png_ptr->transformations & PNG_EXPAND_tRNS) != 0)
+             png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
             png_do_expand(row_info, png_ptr->row_buf + 1,
                 &(png_ptr->trans_color));
 
@@ -4801,8 +4797,8 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_STRIP_ALPHA) != 0 &&
-       (png_ptr->transformations & PNG_COMPOSE) == 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA) &&
+       ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        (row_info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
        row_info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA))
       png_do_strip_channel(row_info, png_ptr->row_buf + 1,
@@ -4810,7 +4806,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
-   if ((png_ptr->transformations & PNG_RGB_TO_GRAY) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
    {
       int rgb_error =
           png_do_rgb_to_gray(png_ptr, row_info,
@@ -4819,13 +4815,16 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
       if (rgb_error != 0)
       {
          png_ptr->rgb_to_gray_status=1;
-         if ((png_ptr->transformations & PNG_RGB_TO_GRAY) ==
-             PNG_RGB_TO_GRAY_WARN)
-            png_warning(png_ptr, "png_do_rgb_to_gray found nongray pixel");
-
-         if ((png_ptr->transformations & PNG_RGB_TO_GRAY) ==
-             PNG_RGB_TO_GRAY_ERR)
-            png_error(png_ptr, "png_do_rgb_to_gray found nongray pixel");
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY_ERR))
+         {
+            if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY_WARN))
+               png_error(png_ptr, "png_do_rgb_to_gray found nongray pixel");
+         }
+         else
+         {
+            if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY_WARN))
+               png_warning(png_ptr, "png_do_rgb_to_gray found nongray pixel");
+         }
       }
    }
 #endif
@@ -4865,29 +4864,29 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
    /* If gray -> RGB, do so now only if background is non-gray; else do later
     * for performance reasons
     */
-   if ((png_ptr->transformations & PNG_GRAY_TO_RGB) != 0 &&
-       (png_ptr->mode & PNG_BACKGROUND_IS_GRAY) == 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB) &&
+       ! png_rust_has_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY))
       png_do_gray_to_rgb(row_info, png_ptr->row_buf + 1);
 #endif
 
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) ||\
    defined(PNG_READ_ALPHA_MODE_SUPPORTED)
-   if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
       png_do_compose(row_info, png_ptr->row_buf + 1, png_ptr);
 #endif
 
 #ifdef PNG_READ_GAMMA_SUPPORTED
-   if ((png_ptr->transformations & PNG_GAMMA) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GAMMA) &&
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
       /* Because RGB_TO_GRAY does the gamma transform. */
-      (png_ptr->transformations & PNG_RGB_TO_GRAY) == 0 &&
+      ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY) &&
 #endif
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) ||\
    defined(PNG_READ_ALPHA_MODE_SUPPORTED)
       /* Because PNG_COMPOSE does the gamma transform if there is something to
        * do (if there is an alpha channel or transparency.)
        */
-       !((png_ptr->transformations & PNG_COMPOSE) != 0 &&
+       !(png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        ((png_ptr->num_trans != 0) ||
        (png_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)) &&
 #endif
@@ -4899,8 +4898,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_STRIP_ALPHA) != 0 &&
-       (png_ptr->transformations & PNG_COMPOSE) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA | PNG_COMPOSE) &&
        (row_info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
        row_info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA))
       png_do_strip_channel(row_info, png_ptr->row_buf + 1,
@@ -4908,13 +4906,13 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_READ_ALPHA_MODE_SUPPORTED
-   if ((png_ptr->transformations & PNG_ENCODE_ALPHA) != 0 &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA) &&
        (row_info->color_type & PNG_COLOR_MASK_ALPHA) != 0)
       png_do_encode_alpha(row_info, png_ptr->row_buf + 1, png_ptr);
 #endif
 
 #ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
-   if ((png_ptr->transformations & PNG_SCALE_16_TO_8) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8))
       png_do_scale_16_to_8(row_info, png_ptr->row_buf + 1);
 #endif
 
@@ -4923,12 +4921,12 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     * by putting the 'scale' option first if the app asks for scale (either by
     * calling the API or in a TRANSFORM flag) this is what happens.
     */
-   if ((png_ptr->transformations & PNG_16_TO_8) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_16_TO_8))
       png_do_chop(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
-   if ((png_ptr->transformations & PNG_QUANTIZE) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_QUANTIZE))
    {
       png_do_quantize(row_info, png_ptr->row_buf + 1,
           png_ptr->palette_lookup, png_ptr->quantize_index);
@@ -4944,35 +4942,35 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     * is efficient (particularly true in the case of gamma correction, where
     * better accuracy results faster!)
     */
-   if ((png_ptr->transformations & PNG_EXPAND_16) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16))
       png_do_expand_16(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_GRAY_TO_RGB_SUPPORTED
    /* NOTE: moved here in 1.5.4 (from much later in this list.) */
-   if ((png_ptr->transformations & PNG_GRAY_TO_RGB) != 0 &&
-       (png_ptr->mode & PNG_BACKGROUND_IS_GRAY) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB) &&
+       png_rust_has_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY))
       png_do_gray_to_rgb(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_INVERT_SUPPORTED
-   if ((png_ptr->transformations & PNG_INVERT_MONO) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
       png_do_invert(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_INVERT_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_INVERT_ALPHA) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
       png_do_read_invert_alpha(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_SHIFT_SUPPORTED
-   if ((png_ptr->transformations & PNG_SHIFT) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
       png_do_unshift(row_info, png_ptr->row_buf + 1,
           &(png_ptr->shift));
 #endif
 
 #ifdef PNG_READ_PACK_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACK) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
       png_do_unpack(row_info, png_ptr->row_buf + 1);
 #endif
 
@@ -4984,35 +4982,35 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #endif
 
 #ifdef PNG_READ_BGR_SUPPORTED
-   if ((png_ptr->transformations & PNG_BGR) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
       png_do_bgr(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_PACKSWAP_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
       png_do_packswap(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_FILLER_SUPPORTED
-   if ((png_ptr->transformations & PNG_FILLER) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
       png_do_read_filler(row_info, png_ptr->row_buf + 1,
-          (png_uint_32)png_ptr->filler, png_ptr->flags);
+                         (png_uint_32)png_ptr->filler, png_rust_get_flags(png_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_READ_SWAP_ALPHA_SUPPORTED
-   if ((png_ptr->transformations & PNG_SWAP_ALPHA) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA))
       png_do_read_swap_alpha(row_info, png_ptr->row_buf + 1);
 #endif
 
 #ifdef PNG_READ_16BIT_SUPPORTED
 #ifdef PNG_READ_SWAP_SUPPORTED
-   if ((png_ptr->transformations & PNG_SWAP_BYTES) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
       png_do_swap(row_info, png_ptr->row_buf + 1);
 #endif
 #endif
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
-   if ((png_ptr->transformations & PNG_USER_TRANSFORM) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM))
    {
       if (png_ptr->read_user_transform_fn != NULL)
          (*(png_ptr->read_user_transform_fn)) /* User read transform function */

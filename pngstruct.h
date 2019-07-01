@@ -177,10 +177,6 @@ struct png_struct_def
 #endif
 #endif
 
-   png_uint_32 mode;          /* tells us where we are in the PNG file */
-   png_uint_32 flags;         /* flags indicating various things to libpng */
-   png_uint_32 transformations; /* which transformations to perform */
-
    png_uint_32 zowner;        /* ID (chunk type) of zstream owner, 0 if none */
    z_stream    zstream;       /* decompression structure */
 

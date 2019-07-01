@@ -1,4 +1,3 @@
-
 /* pngget.c - retrieval of values from info struct
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -1172,7 +1171,7 @@ png_get_compression_buffer_size(png_const_structrp png_ptr)
       return 0;
 
 #ifdef PNG_WRITE_SUPPORTED
-   if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0)
+   if ( png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
 #endif
    {
 #ifdef PNG_SEQUENTIAL_READ_SUPPORTED

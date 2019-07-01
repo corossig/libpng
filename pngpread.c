@@ -176,7 +176,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
     * sure we have enough data in the buffer for the 4-byte CRC at the
     * end of every chunk (except IDAT, which is handled separately).
     */
-   if ((png_ptr->mode & PNG_HAVE_CHUNK_HEADER) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER) )
    {
       png_byte chunk_length[4];
       png_byte chunk_tag[4];
@@ -189,37 +189,37 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
       png_ptr->chunk_name = PNG_CHUNK_FROM_STRING(chunk_tag);
       png_check_chunk_name(png_ptr, png_ptr->chunk_name);
       png_check_chunk_length(png_ptr, png_ptr->push_length);
-      png_ptr->mode |= PNG_HAVE_CHUNK_HEADER;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
    }
 
    chunk_name = png_ptr->chunk_name;
 
    if (chunk_name == png_IDAT)
    {
-      if ((png_ptr->mode & PNG_AFTER_IDAT) != 0)
-         png_ptr->mode |= PNG_HAVE_CHUNK_AFTER_IDAT;
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT))
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT);
 
       /* If we reach an IDAT chunk, this means we have read all of the
        * header chunks, and we can start reading the image (or if this
        * is called after the image has been read - we have an error).
        */
-      if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+      if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR) )
          png_error(png_ptr, "Missing IHDR before IDAT");
 
       else if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
-          (png_ptr->mode & PNG_HAVE_PLTE) == 0)
+               ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE) )
          png_error(png_ptr, "Missing PLTE before IDAT");
 
       png_ptr->process_mode = PNG_READ_IDAT_MODE;
 
-      if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
-         if ((png_ptr->mode & PNG_HAVE_CHUNK_AFTER_IDAT) == 0)
-            if (png_ptr->push_length == 0)
-               return;
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT) &&
+          ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT) &&
+          png_ptr->push_length == 0)
+         return;
 
-      png_ptr->mode |= PNG_HAVE_IDAT;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT);
 
-      if ((png_ptr->mode & PNG_AFTER_IDAT) != 0)
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT))
          png_benign_error(png_ptr, "Too many IDATs found");
    }
 
@@ -248,7 +248,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
       png_handle_unknown(png_ptr, info_ptr, png_ptr->push_length, keep);
 
       if (chunk_name == png_PLTE)
-         png_ptr->mode |= PNG_HAVE_PLTE;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
    }
 #endif
 
@@ -413,7 +413,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
           PNG_HANDLE_CHUNK_AS_DEFAULT);
    }
 
-   png_ptr->mode &= ~PNG_HAVE_CHUNK_HEADER;
+   png_rust_remove_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
 }
 
 void PNGCBAPI
@@ -532,7 +532,7 @@ png_push_restore_buffer(png_structrp png_ptr, png_bytep buffer,
 void /* PRIVATE */
 png_push_read_IDAT(png_structrp png_ptr)
 {
-   if ((png_ptr->mode & PNG_HAVE_CHUNK_HEADER) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER))
    {
       png_byte chunk_length[4];
       png_byte chunk_tag[4];
@@ -544,13 +544,13 @@ png_push_read_IDAT(png_structrp png_ptr)
       png_reset_crc(png_ptr);
       png_crc_read(png_ptr, chunk_tag, 4);
       png_ptr->chunk_name = PNG_CHUNK_FROM_STRING(chunk_tag);
-      png_ptr->mode |= PNG_HAVE_CHUNK_HEADER;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
 
       if (png_ptr->chunk_name != png_IDAT)
       {
          png_ptr->process_mode = PNG_READ_CHUNK_MODE;
 
-         if ((png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED) == 0)
+         if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
             png_error(png_ptr, "Not enough compressed data");
 
          return;
@@ -616,8 +616,8 @@ png_push_read_IDAT(png_structrp png_ptr)
    {
       PNG_PUSH_SAVE_BUFFER_IF_LT(4)
       png_crc_finish(png_ptr, 0);
-      png_ptr->mode &= ~PNG_HAVE_CHUNK_HEADER;
-      png_ptr->mode |= PNG_AFTER_IDAT;
+      png_rust_remove_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
       png_ptr->zowner = 0;
    }
 }
@@ -642,7 +642,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
     * or the stream marked as finished.
     */
    while (png_ptr->zstream.avail_in > 0 &&
-      (png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED) == 0)
+          ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
    {
       int ret;
 
@@ -673,7 +673,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
       if (ret != Z_OK && ret != Z_STREAM_END)
       {
          /* Terminate the decompression. */
-         png_ptr->flags |= PNG_FLAG_ZSTREAM_ENDED;
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
          png_ptr->zowner = 0;
 
          /* This may be a truncated stream (missing or
@@ -707,7 +707,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
          {
             /* Extra data. */
             png_warning(png_ptr, "Extra compressed data in IDAT");
-            png_ptr->flags |= PNG_FLAG_ZSTREAM_ENDED;
+            png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
             png_ptr->zowner = 0;
 
             /* Do no more processing; skip the unprocessed
@@ -723,7 +723,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
 
       /* And check for the end of the stream. */
       if (ret == Z_STREAM_END)
-         png_ptr->flags |= PNG_FLAG_ZSTREAM_ENDED;
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
    }
 
    /* All the data should have been processed, if anything
@@ -764,7 +764,7 @@ png_push_process_row(png_structrp png_ptr)
    memcpy(png_ptr->prev_row, png_ptr->row_buf, row_info.rowbytes + 1);
 
 #ifdef PNG_READ_TRANSFORMS_SUPPORTED
-   if (png_ptr->transformations != 0)
+   if ( ! png_rust_empty_transformations(png_ptr->rust_ptr) )
       png_do_read_transformations(png_ptr, &row_info);
 #endif
 
@@ -783,11 +783,11 @@ png_push_process_row(png_structrp png_ptr)
 #ifdef PNG_READ_INTERLACING_SUPPORTED
    /* Expand interlaced rows to full size */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-       (png_ptr->transformations & PNG_INTERLACE) != 0)
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       if (png_rust_get_pass(png_ptr->rust_ptr) < 6)
          png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr),
-             png_ptr->transformations);
+             png_rust_get_transformations(png_ptr->rust_ptr));
 
       switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
@@ -1017,7 +1017,7 @@ png_read_push_finish_row(png_structrp png_ptr)
              png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
              png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
 
-         if ((png_ptr->transformations & PNG_INTERLACE) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
             break;
 
          png_ptr->num_rows = (png_ptr->height +

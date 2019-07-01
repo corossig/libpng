@@ -87,13 +87,13 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   if ((png_ptr->mode & PNG_WROTE_INFO_BEFORE_PLTE) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_INFO_BEFORE_PLTE))
    {
       /* Write PNG signature */
       png_write_sig(png_ptr);
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-      if ((png_ptr->mode & PNG_HAVE_PNG_SIGNATURE) != 0 && \
+      if ( png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE) && \
           png_ptr->mng_features_permitted != 0)
       {
          png_warning(png_ptr,
@@ -183,7 +183,7 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
          write_unknown_chunks(png_ptr, info_ptr, PNG_HAVE_IHDR);
 #endif
 
-      png_ptr->mode |= PNG_WROTE_INFO_BEFORE_PLTE;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_WROTE_INFO_BEFORE_PLTE);
    }
 }
 
@@ -213,7 +213,7 @@ png_write_info(png_structrp png_ptr, png_const_inforp info_ptr)
    {
 #ifdef PNG_WRITE_INVERT_ALPHA_SUPPORTED
       /* Invert the alpha channel (in tRNS) */
-      if ((png_ptr->transformations & PNG_INVERT_ALPHA) != 0 &&
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA) &&
           info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
       {
          int j, jend;
@@ -275,7 +275,7 @@ png_write_info(png_structrp png_ptr, png_const_inforp info_ptr)
    if ((info_ptr->valid & PNG_INFO_tIME) != 0)
    {
       png_write_tIME(png_ptr, &(info_ptr->mod_time));
-      png_ptr->mode |= PNG_WROTE_tIME;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_WROTE_tIME);
    }
 #endif /* tIME */
 
@@ -361,7 +361,7 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
    if (png_ptr == NULL)
       return;
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT) )
       png_error(png_ptr, "No IDATs written into file");
 
 #ifdef PNG_WRITE_CHECK_FOR_INVALID_INDEX_SUPPORTED
@@ -378,7 +378,7 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
 #ifdef PNG_WRITE_tIME_SUPPORTED
       /* Check to see if user has supplied a time chunk */
       if ((info_ptr->valid & PNG_INFO_tIME) != 0 &&
-          (png_ptr->mode & PNG_WROTE_tIME) == 0)
+          ! png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_tIME) )
          png_write_tIME(png_ptr, &(info_ptr->mod_time));
 
 #endif
@@ -447,7 +447,7 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
 #endif
    }
 
-   png_ptr->mode |= PNG_AFTER_IDAT;
+   png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
 
    /* Write end of PNG file */
    png_write_IEND(png_ptr);
@@ -548,14 +548,14 @@ png_create_write_struct_2,(png_const_charp user_png_ver, png_voidp error_ptr,
       /* In stable builds only warn if an application error can be completely
        * handled.
        */
-      png_ptr->flags |= PNG_FLAG_BENIGN_ERRORS_WARN;
+      png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN);
 #endif
 
       /* App warnings are warnings in release (or release candidate) builds but
        * are errors during development.
        */
 #if PNG_RELEASE_BUILD
-      png_ptr->flags |= PNG_FLAG_APP_WARNINGS_WARN;
+      png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_APP_WARNINGS_WARN);
 #endif
 
       /* TODO: delay this, it can be done in png_init_io() (if the app doesn't
@@ -709,44 +709,44 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    if (png_ptr->row_number == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
    {
       /* Make sure we wrote the header info */
-      if ((png_ptr->mode & PNG_WROTE_INFO_BEFORE_PLTE) == 0)
+      if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_INFO_BEFORE_PLTE) )
          png_error(png_ptr,
              "png_write_info was never called before png_write_row");
 
       /* Check for transforms that have been set but were defined out */
 #if !defined(PNG_WRITE_INVERT_SUPPORTED) && defined(PNG_READ_INVERT_SUPPORTED)
-      if ((png_ptr->transformations & PNG_INVERT_MONO) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
          png_warning(png_ptr, "PNG_WRITE_INVERT_SUPPORTED is not defined");
 #endif
 
 #if !defined(PNG_WRITE_FILLER_SUPPORTED) && defined(PNG_READ_FILLER_SUPPORTED)
-      if ((png_ptr->transformations & PNG_FILLER) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
          png_warning(png_ptr, "PNG_WRITE_FILLER_SUPPORTED is not defined");
 #endif
 #if !defined(PNG_WRITE_PACKSWAP_SUPPORTED) && \
     defined(PNG_READ_PACKSWAP_SUPPORTED)
-      if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
          png_warning(png_ptr,
              "PNG_WRITE_PACKSWAP_SUPPORTED is not defined");
 #endif
 
 #if !defined(PNG_WRITE_PACK_SUPPORTED) && defined(PNG_READ_PACK_SUPPORTED)
-      if ((png_ptr->transformations & PNG_PACK) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
          png_warning(png_ptr, "PNG_WRITE_PACK_SUPPORTED is not defined");
 #endif
 
 #if !defined(PNG_WRITE_SHIFT_SUPPORTED) && defined(PNG_READ_SHIFT_SUPPORTED)
-      if ((png_ptr->transformations & PNG_SHIFT) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
          png_warning(png_ptr, "PNG_WRITE_SHIFT_SUPPORTED is not defined");
 #endif
 
 #if !defined(PNG_WRITE_BGR_SUPPORTED) && defined(PNG_READ_BGR_SUPPORTED)
-      if ((png_ptr->transformations & PNG_BGR) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
          png_warning(png_ptr, "PNG_WRITE_BGR_SUPPORTED is not defined");
 #endif
 
 #if !defined(PNG_WRITE_SWAP_SUPPORTED) && defined(PNG_READ_SWAP_SUPPORTED)
-      if ((png_ptr->transformations & PNG_SWAP_BYTES) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
          png_warning(png_ptr, "PNG_WRITE_SWAP_SUPPORTED is not defined");
 #endif
 
@@ -756,7 +756,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* If interlaced and not interested in row, return */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-       (png_ptr->transformations & PNG_INTERLACE) != 0)
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
@@ -843,7 +843,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* Handle interlacing */
    if (png_rust_get_interlace(png_ptr->rust_ptr) && png_rust_get_pass(png_ptr->rust_ptr) < 6 &&
-       (png_ptr->transformations & PNG_INTERLACE) != 0)
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       png_do_write_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr));
       /* This should always get caught above, but still ... */
@@ -857,7 +857,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 
 #ifdef PNG_WRITE_TRANSFORMS_SUPPORTED
    /* Handle other transformations */
-   if (png_ptr->transformations != 0)
+   if ( ! png_rust_empty_transformations(png_ptr->rust_ptr) )
       png_do_write_transformations(png_ptr, &row_info);
 #endif
 
@@ -940,7 +940,7 @@ png_write_destroy(png_structrp png_ptr)
    png_debug(1, "in png_write_destroy");
 
    /* Free any memory zlib uses */
-   if ((png_ptr->flags & PNG_FLAG_ZSTREAM_INITIALIZED) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED))
       deflateEnd(&png_ptr->zstream);
 
    /* Free our memory.  png_free checks NULL for us. */
@@ -1185,7 +1185,7 @@ png_set_compression_strategy(png_structrp png_ptr, int strategy)
 
    /* The flag setting here prevents the libpng dynamic selection of strategy.
     */
-   png_ptr->flags |= PNG_FLAG_ZLIB_CUSTOM_STRATEGY;
+   png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZLIB_CUSTOM_STRATEGY);
    png_ptr->zlib_strategy = strategy;
 }
 
@@ -1331,7 +1331,7 @@ png_set_write_user_transform_fn(png_structrp png_ptr, png_user_transform_ptr
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_USER_TRANSFORM;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM);
    png_ptr->write_user_transform_fn = write_user_transform_fn;
 }
 #endif

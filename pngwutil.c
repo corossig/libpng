@@ -61,7 +61,7 @@ png_write_sig(png_structrp png_ptr)
        (size_t)(8 - png_ptr->sig_bytes));
 
    if (png_ptr->sig_bytes < 3)
-      png_ptr->mode |= PNG_HAVE_PNG_SIGNATURE;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE);
 }
 
 /* Write the start of a PNG chunk.  The type is the chunk type.
@@ -332,7 +332,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
 
       if (owner == png_IDAT)
       {
-         if ((png_ptr->flags & PNG_FLAG_ZLIB_CUSTOM_STRATEGY) != 0)
+         if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZLIB_CUSTOM_STRATEGY))
             strategy = png_ptr->zlib_strategy;
 
          else if (png_ptr->do_filter != PNG_FILTER_NONE)
@@ -384,7 +384,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
       }
 
       /* Check against the previous initialized values, if any. */
-      if ((png_ptr->flags & PNG_FLAG_ZSTREAM_INITIALIZED) != 0 &&
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED) &&
          (png_ptr->zlib_set_level != level ||
          png_ptr->zlib_set_method != method ||
          png_ptr->zlib_set_window_bits != windowBits ||
@@ -394,7 +394,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
          if (deflateEnd(&png_ptr->zstream) != Z_OK)
             png_warning(png_ptr, "deflateEnd failed (ignored)");
 
-         png_ptr->flags &= ~PNG_FLAG_ZSTREAM_INITIALIZED;
+         png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED);
       }
 
       /* For safety clear out the input and output pointers (currently zlib
@@ -408,7 +408,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
       /* Now initialize if required, setting the new parameters, otherwise just
        * do a simple reset to the previous parameters.
        */
-      if ((png_ptr->flags & PNG_FLAG_ZSTREAM_INITIALIZED) != 0)
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED))
          ret = deflateReset(&png_ptr->zstream);
 
       else
@@ -417,7 +417,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
              memLevel, strategy);
 
          if (ret == Z_OK)
-            png_ptr->flags |= PNG_FLAG_ZSTREAM_INITIALIZED;
+            png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED);
       }
 
       /* The return code is from either deflateReset or deflateInit2; they have
@@ -768,7 +768,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    if (
 #ifdef PNG_MNG_FEATURES_SUPPORTED
        !((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
-       ((png_ptr->mode & PNG_HAVE_PNG_SIGNATURE) == 0) &&
+         ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE)) &&
        (color_type == PNG_COLOR_TYPE_RGB ||
         color_type == PNG_COLOR_TYPE_RGB_ALPHA) &&
        (filter_type == PNG_INTRAPIXEL_DIFFERENCING)) &&
@@ -830,7 +830,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
          png_ptr->do_filter = PNG_ALL_FILTERS;
    }
 
-   png_ptr->mode = PNG_HAVE_IHDR; /* not READY_FOR_ZTXT */
+   png_rust_set_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR); /* not READY_FOR_ZTXT */
 }
 
 /* Write the palette.  We are careful not to trust png_color to be in the
@@ -906,7 +906,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
 
 #endif
    png_write_chunk_end(png_ptr);
-   png_ptr->mode |= PNG_HAVE_PLTE;
+   png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
 }
 
 /* This is similar to png_text_compress, above, except that it does not require
@@ -996,14 +996,14 @@ png_compress_IDAT(png_structrp png_ptr, png_const_bytep input,
           * first IDAT may need deflate header optimization.
           */
 #ifdef PNG_WRITE_OPTIMIZE_CMF_SUPPORTED
-            if ((png_ptr->mode & PNG_HAVE_IDAT) == 0 &&
-                png_ptr->compression_type == PNG_COMPRESSION_TYPE_BASE)
+            if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT) &&
+                 png_ptr->compression_type == PNG_COMPRESSION_TYPE_BASE)
                optimize_cmf(data, png_image_size(png_ptr));
 #endif
 
          if (size > 0)
             png_write_complete_chunk(png_ptr, png_IDAT, data, size);
-         png_ptr->mode |= PNG_HAVE_IDAT;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT);
 
          png_ptr->zstream.next_out = data;
          png_ptr->zstream.avail_out = size;
@@ -1043,7 +1043,7 @@ png_compress_IDAT(png_structrp png_ptr, png_const_bytep input,
          uInt size = png_ptr->zbuffer_size - png_ptr->zstream.avail_out;
 
 #ifdef PNG_WRITE_OPTIMIZE_CMF_SUPPORTED
-         if ((png_ptr->mode & PNG_HAVE_IDAT) == 0 &&
+         if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) == 0 &&
              png_ptr->compression_type == PNG_COMPRESSION_TYPE_BASE)
             optimize_cmf(data, png_image_size(png_ptr));
 #endif
@@ -1052,7 +1052,7 @@ png_compress_IDAT(png_structrp png_ptr, png_const_bytep input,
             png_write_complete_chunk(png_ptr, png_IDAT, data, size);
          png_ptr->zstream.avail_out = 0;
          png_ptr->zstream.next_out = NULL;
-         png_ptr->mode |= PNG_HAVE_IDAT | PNG_AFTER_IDAT;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT | PNG_AFTER_IDAT);
 
          png_ptr->zowner = 0; /* Release the stream */
          return;
@@ -1074,7 +1074,7 @@ png_write_IEND(png_structrp png_ptr)
    png_debug(1, "in png_write_IEND");
 
    png_write_complete_chunk(png_ptr, png_IEND, NULL, 0);
-   png_ptr->mode |= PNG_HAVE_IEND;
+   png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IEND);
 }
 
 #ifdef PNG_WRITE_gAMA_SUPPORTED
@@ -1975,7 +1975,7 @@ png_write_start_row(png_structrp png_ptr)
    /* If interlaced, we need to set up width and height of pass */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
-      if ((png_ptr->transformations & PNG_INTERLACE) == 0)
+      if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
       {
          png_ptr->num_rows = (png_ptr->height + png_pass_yinc[0] - 1 -
              png_pass_ystart[0]) / png_pass_yinc[0];
@@ -2033,7 +2033,7 @@ png_write_finish_row(png_structrp png_ptr)
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       png_ptr->row_number = 0;
-      if ((png_ptr->transformations & PNG_INTERLACE) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE) )
       {
          png_rust_incr_pass(png_ptr->rust_ptr);
       }
@@ -2058,7 +2058,7 @@ png_write_finish_row(png_structrp png_ptr)
                 png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
                 png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
 
-            if ((png_ptr->transformations & PNG_INTERLACE) != 0)
+            if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
                break;
 
          } while (png_ptr->usr_width == 0 || png_ptr->num_rows == 0);

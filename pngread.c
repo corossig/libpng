@@ -47,7 +47,7 @@ png_create_read_struct_2,(png_const_charp user_png_ver, png_voidp error_ptr,
 
    if (png_ptr != NULL)
    {
-      png_ptr->mode = PNG_IS_READ_STRUCT;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT);
 
       /* Added in libpng-1.6.0; this can be used to detect a read structure if
        * required (it will be zero in a write structure.)
@@ -57,13 +57,13 @@ png_create_read_struct_2,(png_const_charp user_png_ver, png_voidp error_ptr,
 #     endif
 
 #     ifdef PNG_BENIGN_READ_ERRORS_SUPPORTED
-         png_ptr->flags |= PNG_FLAG_BENIGN_ERRORS_WARN;
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN);
 
          /* In stable builds only warn if an application error can be completely
           * handled.
           */
 #        if PNG_RELEASE_BUILD
-            png_ptr->flags |= PNG_FLAG_APP_WARNINGS_WARN;
+            png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_APP_WARNINGS_WARN);
 #        endif
 #     endif
 
@@ -112,23 +112,23 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
        */
       if (chunk_name == png_IDAT)
       {
-         if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+         if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
             png_chunk_error(png_ptr, "Missing IHDR before IDAT");
 
          else if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
-             (png_ptr->mode & PNG_HAVE_PLTE) == 0)
+                  ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE))
             png_chunk_error(png_ptr, "Missing PLTE before IDAT");
 
-         else if ((png_ptr->mode & PNG_AFTER_IDAT) != 0)
+         else if (png_rust_has_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT))
             png_chunk_benign_error(png_ptr, "Too many IDATs found");
 
-         png_ptr->mode |= PNG_HAVE_IDAT;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT);
       }
 
-      else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+      else if ( png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT))
       {
-         png_ptr->mode |= PNG_HAVE_CHUNK_AFTER_IDAT;
-         png_ptr->mode |= PNG_AFTER_IDAT;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT);
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
       }
 
       /* This should be a binary subdivision search or a hash for
@@ -146,7 +146,7 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
          png_handle_unknown(png_ptr, info_ptr, length, keep);
 
          if (chunk_name == png_PLTE)
-            png_ptr->mode |= PNG_HAVE_PLTE;
+            png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
 
          else if (chunk_name == png_IDAT)
          {
@@ -269,7 +269,7 @@ png_read_update_info(png_structrp png_ptr, png_inforp info_ptr)
 
    if (png_ptr != NULL)
    {
-      if ((png_ptr->flags & PNG_FLAG_ROW_INIT) == 0)
+      if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
       {
          png_read_start_row(png_ptr);
 
@@ -300,7 +300,7 @@ png_start_read_image(png_structrp png_ptr)
 
    if (png_ptr != NULL)
    {
-      if ((png_ptr->flags & PNG_FLAG_ROW_INIT) == 0)
+      if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
          png_read_start_row(png_ptr);
 
       /* New in 1.6.0 this avoids the bug of doing the initializations twice */
@@ -392,7 +392,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    /* png_read_start_row sets the information (in particular iwidth) for this
     * interlace pass.
     */
-   if ((png_ptr->flags & PNG_FLAG_ROW_INIT) == 0)
+   if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
       png_read_start_row(png_ptr);
 
    /* 1.5.6: row_info moved out of png_struct to a local here. */
@@ -408,38 +408,38 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    {
    /* Check for transforms that have been set but were defined out */
 #if defined(PNG_WRITE_INVERT_SUPPORTED) && !defined(PNG_READ_INVERT_SUPPORTED)
-   if ((png_ptr->transformations & PNG_INVERT_MONO) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
       png_warning(png_ptr, "PNG_READ_INVERT_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_FILLER_SUPPORTED) && !defined(PNG_READ_FILLER_SUPPORTED)
-   if ((png_ptr->transformations & PNG_FILLER) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
       png_warning(png_ptr, "PNG_READ_FILLER_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_PACKSWAP_SUPPORTED) && \
     !defined(PNG_READ_PACKSWAP_SUPPORTED)
-   if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
       png_warning(png_ptr, "PNG_READ_PACKSWAP_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_PACK_SUPPORTED) && !defined(PNG_READ_PACK_SUPPORTED)
-   if ((png_ptr->transformations & PNG_PACK) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
       png_warning(png_ptr, "PNG_READ_PACK_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_SHIFT_SUPPORTED) && !defined(PNG_READ_SHIFT_SUPPORTED)
-   if ((png_ptr->transformations & PNG_SHIFT) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
       png_warning(png_ptr, "PNG_READ_SHIFT_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_BGR_SUPPORTED) && !defined(PNG_READ_BGR_SUPPORTED)
-   if ((png_ptr->transformations & PNG_BGR) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
       png_warning(png_ptr, "PNG_READ_BGR_SUPPORTED is not defined");
 #endif
 
 #if defined(PNG_WRITE_SWAP_SUPPORTED) && !defined(PNG_READ_SWAP_SUPPORTED)
-   if ((png_ptr->transformations & PNG_SWAP_BYTES) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
       png_warning(png_ptr, "PNG_READ_SWAP_SUPPORTED is not defined");
 #endif
    }
@@ -453,7 +453,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
     * means we must transform before de-interlacing.
     */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-       (png_ptr->transformations & PNG_INTERLACE) != 0)
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
@@ -534,7 +534,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    }
 #endif
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT))
       png_error(png_ptr, "Invalid attempt to read row data");
 
    /* Fill the row with IDAT data: */
@@ -567,7 +567,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 #endif
 
 #ifdef PNG_READ_TRANSFORMS_SUPPORTED
-   if (png_ptr->transformations)
+   if ( ! png_rust_empty_transformations(png_ptr->rust_ptr) )
       png_do_read_transformations(png_ptr, &row_info);
 #endif
 
@@ -585,11 +585,11 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 #ifdef PNG_READ_INTERLACING_SUPPORTED
    /* Expand interlaced rows to full size */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-      (png_ptr->transformations & PNG_INTERLACE) != 0)
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       if (png_rust_get_pass(png_ptr->rust_ptr) < 6)
          png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr),
-             png_ptr->transformations);
+             png_rust_get_transformations(png_ptr->rust_ptr));
 
       if (dsp_row != NULL)
          png_combine_row(png_ptr, dsp_row, 1/*display*/);
@@ -708,7 +708,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
       return;
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED
-   if ((png_ptr->flags & PNG_FLAG_ROW_INIT) == 0)
+   if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT) )
    {
       pass = png_set_interlace_handling(png_ptr);
       /* And make sure transforms are initialized. */
@@ -717,7 +717,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
    else
    {
       if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-          (png_ptr->transformations & PNG_INTERLACE) == 0)
+          ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
       {
          /* Caller called png_start_read_image or png_read_update_info without
           * first turning on the PNG_INTERLACE transform.  We can fix this here,
@@ -794,7 +794,7 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
       png_uint_32 chunk_name = png_ptr->chunk_name;
 
       if (chunk_name != png_IDAT)
-         png_ptr->mode |= PNG_HAVE_CHUNK_AFTER_IDAT;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT);
 
       if (chunk_name == png_IEND)
          png_handle_IEND(png_ptr, info_ptr, length);
@@ -810,13 +810,13 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
       {
          if (chunk_name == png_IDAT)
          {
-            if ((length > 0 && !(png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED))
-                || (png_ptr->mode & PNG_HAVE_CHUNK_AFTER_IDAT) != 0)
+            if ((length > 0 && png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
+                || png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT))
                png_benign_error(png_ptr, ".Too many IDATs found");
          }
          png_handle_unknown(png_ptr, info_ptr, length, keep);
          if (chunk_name == png_PLTE)
-            png_ptr->mode |= PNG_HAVE_PLTE;
+            png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
       }
 #endif
 
@@ -828,8 +828,8 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
           * upon to read the Adler32 at the end.  If it doesn't ignore IDAT
           * chunks which are longer than zero as well:
           */
-         if ((length > 0 && !(png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED))
-             || (png_ptr->mode & PNG_HAVE_CHUNK_AFTER_IDAT) != 0)
+         if ((length > 0 && png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
+             || png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT))
             png_benign_error(png_ptr, "..Too many IDATs found");
 
          png_crc_finish(png_ptr, length);
@@ -930,7 +930,7 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
       else
          png_handle_unknown(png_ptr, info_ptr, length,
              PNG_HANDLE_CHUNK_AS_DEFAULT);
-   } while ((png_ptr->mode & PNG_HAVE_IEND) == 0);
+   } while ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IEND) );
 }
 #endif /* SEQUENTIAL_READ */
 
@@ -3404,10 +3404,10 @@ png_image_read_background(png_voidp argument)
     * left to the png_image_read_background function.  The rows libpng produce
     * might be 8 or 16-bit but should always have two channels; gray plus alpha.
     */
-   if ((png_ptr->transformations & PNG_RGB_TO_GRAY) == 0)
+   if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY) )
       png_error(png_ptr, "lost rgb to gray");
 
-   if ((png_ptr->transformations & PNG_COMPOSE) != 0)
+   if ( png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) )
       png_error(png_ptr, "unexpected compose");
 
    if (png_get_channels(png_ptr, info_ptr) != 2)
@@ -4004,7 +4004,7 @@ png_image_read_direct(png_voidp argument)
          info_format |= PNG_FORMAT_FLAG_LINEAR;
 
 #ifdef PNG_FORMAT_BGR_SUPPORTED
-      if ((png_ptr->transformations & PNG_BGR) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
          info_format |= PNG_FORMAT_FLAG_BGR;
 #endif
 
@@ -4015,9 +4015,9 @@ png_image_read_direct(png_voidp argument)
                info_format |= PNG_FORMAT_FLAG_AFIRST;
          }
 
-         if ((png_ptr->transformations & PNG_SWAP_ALPHA) != 0 ||
-            ((png_ptr->transformations & PNG_ADD_ALPHA) != 0 &&
-            (png_ptr->flags & PNG_FLAG_FILLER_AFTER) == 0))
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA) ||
+             (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ADD_ALPHA) &&
+              ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_FILLER_AFTER)))
          {
             if (do_local_background == 2)
                png_error(png_ptr, "unexpected alpha swap transformation");

@@ -141,14 +141,13 @@ png_calculate_crc(png_structrp png_ptr, png_const_bytep ptr, size_t length)
 
    if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0)
    {
-      if ((png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_MASK) ==
-          (PNG_FLAG_CRC_ANCILLARY_USE | PNG_FLAG_CRC_ANCILLARY_NOWARN))
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK))
          need_crc = 0;
    }
 
    else /* critical */
    {
-      if ((png_ptr->flags & PNG_FLAG_CRC_CRITICAL_IGNORE) != 0)
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_IGNORE))
          need_crc = 0;
    }
 
@@ -205,7 +204,7 @@ png_user_version_check(png_structrp png_ptr, png_const_charp user_png_ver)
       {
          i++;
          if (user_png_ver[i] != PNG_LIBPNG_VER_STRING[i])
-            png_ptr->flags |= PNG_FLAG_LIBRARY_MISMATCH;
+            png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_LIBRARY_MISMATCH);
          if (user_png_ver[i] == '.')
             found_dots++;
       } while (found_dots < 2 && user_png_ver[i] != 0 &&
@@ -213,9 +212,9 @@ png_user_version_check(png_structrp png_ptr, png_const_charp user_png_ver)
    }
 
    else
-      png_ptr->flags |= PNG_FLAG_LIBRARY_MISMATCH;
+      png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_LIBRARY_MISMATCH);
 
-   if ((png_ptr->flags & PNG_FLAG_LIBRARY_MISMATCH) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_LIBRARY_MISMATCH))
    {
 #ifdef PNG_WARNINGS_SUPPORTED
       size_t pos = 0;
@@ -232,7 +231,7 @@ png_user_version_check(png_structrp png_ptr, png_const_charp user_png_ver)
 #endif
 
 #ifdef PNG_ERROR_NUMBERS_SUPPORTED
-      png_ptr->flags = 0;
+      png_rust_reset_flags(png_ptr->rust_ptr);
 #endif
 
       return 0;
@@ -1133,7 +1132,7 @@ png_colorspace_set_gamma(png_const_structrp png_ptr,
 
 #  ifdef PNG_READ_gAMA_SUPPORTED
    /* Allow the application to set the gamma value more than once */
-   else if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0 &&
+   else if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
       (colorspace->flags & PNG_COLORSPACE_FROM_gAMA) != 0)
       errmsg = "duplicate";
 #  endif
@@ -2665,7 +2664,7 @@ png_check_IHDR(png_const_structrp png_ptr,
     * 4. The filter_method is 64 and
     * 5. The color_type is RGB or RGBA
     */
-   if ((png_ptr->mode & PNG_HAVE_PNG_SIGNATURE) != 0 &&
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PNG_SIGNATURE) != 0 &&
        png_ptr->mng_features_permitted != 0)
       png_warning(png_ptr, "MNG features are not allowed in a PNG datastream");
 
@@ -2673,7 +2672,7 @@ png_check_IHDR(png_const_structrp png_ptr,
    {
       if (!((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
           (filter_type == PNG_INTRAPIXEL_DIFFERENCING) &&
-          ((png_ptr->mode & PNG_HAVE_PNG_SIGNATURE) == 0) &&
+          ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PNG_SIGNATURE) == 0) &&
           (color_type == PNG_COLOR_TYPE_RGB ||
           color_type == PNG_COLOR_TYPE_RGB_ALPHA)))
       {
@@ -2681,7 +2680,7 @@ png_check_IHDR(png_const_structrp png_ptr,
          error = 1;
       }
 
-      if ((png_ptr->mode & PNG_HAVE_PNG_SIGNATURE) != 0)
+      if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PNG_SIGNATURE) != 0)
       {
          png_warning(png_ptr, "Invalid filter method in IHDR");
          error = 1;
@@ -4220,7 +4219,7 @@ png_build_gamma_table(png_structrp png_ptr, int bit_depth)
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) || \
    defined(PNG_READ_ALPHA_MODE_SUPPORTED) || \
    defined(PNG_READ_RGB_TO_GRAY_SUPPORTED)
-      if ((png_ptr->transformations & (PNG_COMPOSE | PNG_RGB_TO_GRAY)) != 0)
+      if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_COMPOSE | PNG_RGB_TO_GRAY)))
       {
          png_build_8bit_table(png_ptr, &png_ptr->gamma_to_1,
              png_reciprocal(png_ptr->colorspace.gamma));
@@ -4275,7 +4274,7 @@ png_build_gamma_table(png_structrp png_ptr, int bit_depth)
       else
          shift = 0; /* keep all 16 bits */
 
-      if ((png_ptr->transformations & (PNG_16_TO_8 | PNG_SCALE_16_TO_8)) != 0)
+      if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_16_TO_8 | PNG_SCALE_16_TO_8)))
       {
          /* PNG_MAX_GAMMA_8 is the number of bits to keep - effectively
           * the significant bits in the *input* when the output will
@@ -4295,7 +4294,7 @@ png_build_gamma_table(png_structrp png_ptr, int bit_depth)
        * 16-bit output because the 8-bit table assumes the result will be
        * reduced to 8 bits.
        */
-      if ((png_ptr->transformations & (PNG_16_TO_8 | PNG_SCALE_16_TO_8)) != 0)
+      if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_16_TO_8 | PNG_SCALE_16_TO_8)))
           png_build_16to8_table(png_ptr, &png_ptr->gamma_16_table, shift,
           png_ptr->screen_gamma > 0 ? png_product2(png_ptr->colorspace.gamma,
           png_ptr->screen_gamma) : PNG_FP_1);
@@ -4308,7 +4307,7 @@ png_build_gamma_table(png_structrp png_ptr, int bit_depth)
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) || \
    defined(PNG_READ_ALPHA_MODE_SUPPORTED) || \
    defined(PNG_READ_RGB_TO_GRAY_SUPPORTED)
-      if ((png_ptr->transformations & (PNG_COMPOSE | PNG_RGB_TO_GRAY)) != 0)
+      if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_COMPOSE | PNG_RGB_TO_GRAY)))
       {
          png_build_16bit_table(png_ptr, &png_ptr->gamma_16_to_1, shift,
              png_reciprocal(png_ptr->colorspace.gamma));

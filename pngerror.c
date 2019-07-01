@@ -1,4 +1,3 @@
-
 /* pngerror.c - stub functions for i/o and memory allocation
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -361,10 +360,10 @@ png_formatted_warning(png_const_structrp png_ptr, png_warning_parameters p,
 void PNGAPI
 png_benign_error(png_const_structrp png_ptr, png_const_charp error_message)
 {
-   if ((png_ptr->flags & PNG_FLAG_BENIGN_ERRORS_WARN) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN))
    {
 #     ifdef PNG_READ_SUPPORTED
-         if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0 &&
+         if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
             png_ptr->chunk_name != 0)
             png_chunk_warning(png_ptr, error_message);
          else
@@ -375,7 +374,7 @@ png_benign_error(png_const_structrp png_ptr, png_const_charp error_message)
    else
    {
 #     ifdef PNG_READ_SUPPORTED
-         if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0 &&
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
             png_ptr->chunk_name != 0)
             png_chunk_error(png_ptr, error_message);
          else
@@ -391,7 +390,7 @@ png_benign_error(png_const_structrp png_ptr, png_const_charp error_message)
 void /* PRIVATE */
 png_app_warning(png_const_structrp png_ptr, png_const_charp error_message)
 {
-   if ((png_ptr->flags & PNG_FLAG_APP_WARNINGS_WARN) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_APP_WARNINGS_WARN))
       png_warning(png_ptr, error_message);
    else
       png_error(png_ptr, error_message);
@@ -404,7 +403,7 @@ png_app_warning(png_const_structrp png_ptr, png_const_charp error_message)
 void /* PRIVATE */
 png_app_error(png_const_structrp png_ptr, png_const_charp error_message)
 {
-   if ((png_ptr->flags & PNG_FLAG_APP_ERRORS_WARN) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_APP_ERRORS_WARN))
       png_warning(png_ptr, error_message);
    else
       png_error(png_ptr, error_message);
@@ -514,7 +513,7 @@ void PNGAPI
 png_chunk_benign_error(png_const_structrp png_ptr, png_const_charp
     error_message)
 {
-   if ((png_ptr->flags & PNG_FLAG_BENIGN_ERRORS_WARN) != 0)
+   if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN))
       png_chunk_warning(png_ptr, error_message);
 
    else
@@ -538,7 +537,7 @@ png_chunk_report(png_const_structrp png_ptr, png_const_charp message, int error)
     * unconditionally does the right thing.
     */
 #  if defined(PNG_READ_SUPPORTED) && defined(PNG_WRITE_SUPPORTED)
-      if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0)
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT))
 #  endif
 
 #  ifdef PNG_READ_SUPPORTED
@@ -552,7 +551,7 @@ png_chunk_report(png_const_structrp png_ptr, png_const_charp message, int error)
 #  endif
 
 #  if defined(PNG_READ_SUPPORTED) && defined(PNG_WRITE_SUPPORTED)
-      else if ((png_ptr->mode & PNG_IS_READ_STRUCT) == 0)
+      else if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT))
 #  endif
 
 #  ifdef PNG_WRITE_SUPPORTED
@@ -868,9 +867,7 @@ png_set_strip_error_numbers(png_structrp png_ptr, png_uint_32 strip_mode)
 {
    if (png_ptr != NULL)
    {
-      png_ptr->flags &=
-         ((~(PNG_FLAG_STRIP_ERROR_NUMBERS |
-         PNG_FLAG_STRIP_ERROR_TEXT))&strip_mode);
+      png_c_set_strip_error_numbers(png_ptr->rust_ptr, strip_mode);
    }
 }
 #endif

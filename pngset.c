@@ -1,4 +1,3 @@
-
 /* pngset.c - storage of image information into info struct
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -971,7 +970,7 @@ png_set_tIME(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s storage function", "tIME");
 
    if (png_ptr == NULL || info_ptr == NULL || mod_time == NULL ||
-       (png_ptr->mode & PNG_WROTE_tIME) != 0)
+       png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_tIME))
       return;
 
    if (mod_time->month == 0   || mod_time->month > 12  ||
@@ -1168,13 +1167,13 @@ check_location(png_const_structrp png_ptr, int location)
     * change; previously the app had to use the
     * png_set_unknown_chunk_location API below for each chunk.
     */
-   if (location == 0 && (png_ptr->mode & PNG_IS_READ_STRUCT) == 0)
+   if (location == 0 && ! png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT))
    {
       /* Write struct, so unknown chunks come from the app */
       png_app_warning(png_ptr,
           "png_set_unknown_chunks now expects a valid location");
       /* Use the old behavior */
-      location = (png_byte)(png_ptr->mode &
+      location = (png_byte)(png_rust_get_mode(png_ptr->rust_ptr) &
           (PNG_HAVE_IHDR|PNG_HAVE_PLTE|PNG_AFTER_IDAT));
    }
 
@@ -1214,7 +1213,7 @@ png_set_unknown_chunks(png_const_structrp png_ptr,
     */
 #  if !defined(PNG_READ_UNKNOWN_CHUNKS_SUPPORTED) && \
       defined(PNG_READ_SUPPORTED)
-      if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0)
+      if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
       {
          png_app_error(png_ptr, "no unknown chunk support on read");
 
@@ -1223,7 +1222,7 @@ png_set_unknown_chunks(png_const_structrp png_ptr,
 #  endif
 #  if !defined(PNG_WRITE_UNKNOWN_CHUNKS_SUPPORTED) && \
       defined(PNG_WRITE_SUPPORTED)
-      if ((png_ptr->mode & PNG_IS_READ_STRUCT) == 0)
+      if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
       {
          png_app_error(png_ptr, "no unknown chunk support on write");
 
@@ -1572,7 +1571,7 @@ png_set_compression_buffer_size(png_structrp png_ptr, size_t size)
       png_error(png_ptr, "invalid compression buffer size");
 
 #  ifdef PNG_SEQUENTIAL_READ_SUPPORTED
-   if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0)
+   if ( png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
    {
       png_ptr->IDAT_read_size = (png_uint_32)size; /* checked above */
       return;
@@ -1580,7 +1579,7 @@ png_set_compression_buffer_size(png_structrp png_ptr, size_t size)
 #  endif
 
 #  ifdef PNG_WRITE_SUPPORTED
-   if ((png_ptr->mode & PNG_IS_READ_STRUCT) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
    {
       if (png_ptr->zowner != 0)
       {
@@ -1679,12 +1678,12 @@ png_set_benign_errors(png_structrp png_ptr, int allowed)
     */
 
    if (allowed != 0)
-      png_ptr->flags |= PNG_FLAG_BENIGN_ERRORS_WARN |
-         PNG_FLAG_APP_WARNINGS_WARN | PNG_FLAG_APP_ERRORS_WARN;
+      png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN |
+                         PNG_FLAG_APP_WARNINGS_WARN | PNG_FLAG_APP_ERRORS_WARN);
 
    else
-      png_ptr->flags &= ~(PNG_FLAG_BENIGN_ERRORS_WARN |
-         PNG_FLAG_APP_WARNINGS_WARN | PNG_FLAG_APP_ERRORS_WARN);
+      png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_BENIGN_ERRORS_WARN |
+                            PNG_FLAG_APP_WARNINGS_WARN | PNG_FLAG_APP_ERRORS_WARN);
 }
 #endif /* BENIGN_ERRORS */
 

@@ -24,7 +24,7 @@ png_set_bgr(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_BGR;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_BGR);
 }
 #endif
 
@@ -39,7 +39,7 @@ png_set_swap(png_structrp png_ptr)
       return;
 
    if (png_ptr->bit_depth == 16)
-      png_ptr->transformations |= PNG_SWAP_BYTES;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES);
 }
 #endif
 
@@ -55,7 +55,7 @@ png_set_packing(png_structrp png_ptr)
 
    if (png_ptr->bit_depth < 8)
    {
-      png_ptr->transformations |= PNG_PACK;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_PACK);
 #     ifdef PNG_WRITE_SUPPORTED
          png_ptr->usr_bit_depth = 8;
 #     endif
@@ -74,7 +74,7 @@ png_set_packswap(png_structrp png_ptr)
       return;
 
    if (png_ptr->bit_depth < 8)
-      png_ptr->transformations |= PNG_PACKSWAP;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_PACKSWAP);
 }
 #endif
 
@@ -87,7 +87,7 @@ png_set_shift(png_structrp png_ptr, png_const_color_8p true_bits)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_SHIFT;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_SHIFT);
    png_ptr->shift = *true_bits;
 }
 #endif
@@ -101,7 +101,7 @@ png_set_interlace_handling(png_structrp png_ptr)
 
    if (png_ptr != 0 && png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
-      png_ptr->transformations |= PNG_INTERLACE;
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_INTERLACE);
       return (7);
    }
 
@@ -126,7 +126,7 @@ png_set_filler(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
    /* In libpng 1.6 it is possible to determine whether this is a read or write
     * operation and therefore to do more checking here for a valid call.
     */
-   if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0)
+   if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT))
    {
 #     ifdef PNG_READ_FILLER_SUPPORTED
          /* On read png_set_filler is always valid, regardless of the base PNG
@@ -190,13 +190,13 @@ png_set_filler(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
    /* Here on success - libpng supports the operation, set the transformation
     * and the flag to say where the filler channel is.
     */
-   png_ptr->transformations |= PNG_FILLER;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_FILLER);
 
    if (filler_loc == PNG_FILLER_AFTER)
-      png_ptr->flags |= PNG_FLAG_FILLER_AFTER;
+      png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_FILLER_AFTER);
 
    else
-      png_ptr->flags &= ~PNG_FLAG_FILLER_AFTER;
+      png_rust_remove_flags(png_ptr->rust_ptr, PNG_FLAG_FILLER_AFTER);
 }
 
 /* Added to libpng-1.2.7 */
@@ -210,8 +210,8 @@ png_set_add_alpha(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
 
    png_set_filler(png_ptr, filler, filler_loc);
    /* The above may fail to do anything. */
-   if ((png_ptr->transformations & PNG_FILLER) != 0)
-      png_ptr->transformations |= PNG_ADD_ALPHA;
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
+      png_rust_add_transformations(png_ptr->rust_ptr, PNG_ADD_ALPHA);
 }
 
 #endif
@@ -226,7 +226,7 @@ png_set_swap_alpha(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_SWAP_ALPHA;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA);
 }
 #endif
 
@@ -240,7 +240,7 @@ png_set_invert_alpha(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_INVERT_ALPHA;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA);
 }
 #endif
 
@@ -253,7 +253,7 @@ png_set_invert_mono(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->transformations |= PNG_INVERT_MONO;
+   png_rust_add_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO);
 }
 
 /* Invert monochrome grayscale data */
@@ -807,8 +807,8 @@ png_set_user_transform_info(png_structrp png_ptr, png_voidp
       return;
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
-   if ((png_ptr->mode & PNG_IS_READ_STRUCT) != 0 &&
-      (png_ptr->flags & PNG_FLAG_ROW_INIT) != 0)
+   if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
+       png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT))
    {
       png_app_error(png_ptr,
           "info change after png_start_read_image or png_read_update_info");

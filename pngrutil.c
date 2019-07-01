@@ -145,7 +145,7 @@ png_read_sig(png_structrp png_ptr, png_inforp info_ptr)
          png_error(png_ptr, "PNG file corrupted by ASCII conversion");
    }
    if (num_checked < 3)
-      png_ptr->mode |= PNG_HAVE_PNG_SIGNATURE;
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE);
 }
 
 /* Read the chunk header (length + type name).
@@ -228,8 +228,8 @@ png_crc_finish(png_structrp png_ptr, png_uint_32 skip)
    if (png_crc_error(png_ptr) != 0)
    {
       if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0 ?
-          (png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_NOWARN) == 0 :
-          (png_ptr->flags & PNG_FLAG_CRC_CRITICAL_USE) != 0)
+          ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_NOWARN) :
+          png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_USE))
       {
          png_chunk_warning(png_ptr, "CRC error");
       }
@@ -255,14 +255,13 @@ png_crc_error(png_structrp png_ptr)
 
    if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0)
    {
-      if ((png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_MASK) ==
-          (PNG_FLAG_CRC_ANCILLARY_USE | PNG_FLAG_CRC_ANCILLARY_NOWARN))
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK))
          need_crc = 0;
    }
 
    else /* critical */
    {
-      if ((png_ptr->flags & PNG_FLAG_CRC_CRITICAL_IGNORE) != 0)
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_IGNORE))
          need_crc = 0;
    }
 
@@ -400,7 +399,7 @@ png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
       png_ptr->zstream.next_out = NULL;
       png_ptr->zstream.avail_out = 0;
 
-      if ((png_ptr->flags & PNG_FLAG_ZSTREAM_INITIALIZED) != 0)
+      if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED))
       {
 #if ZLIB_VERNUM >= 0x1240
          ret = inflateReset2(&png_ptr->zstream, window_bits);
@@ -418,7 +417,7 @@ png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
 #endif
 
          if (ret == Z_OK)
-            png_ptr->flags |= PNG_FLAG_ZSTREAM_INITIALIZED;
+            png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_INITIALIZED);
       }
 
 #if ZLIB_VERNUM >= 0x1290 && \
@@ -844,14 +843,14 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_IHDR");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) != 0)
+   if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
       png_chunk_error(png_ptr, "out of place");
 
    /* Check the length */
    if (length != 13)
       png_chunk_error(png_ptr, "invalid");
 
-   png_ptr->mode |= PNG_HAVE_IHDR;
+   png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR);
 
    png_crc_read(png_ptr, buf, 13);
    png_crc_finish(png_ptr, 0);
@@ -919,7 +918,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_PLTE");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
       png_chunk_error(png_ptr, "missing IHDR");
 
    /* Moved to before the 'after IDAT' check below because otherwise duplicate
@@ -927,10 +926,10 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * than one PLTE, the error is not treated as benign, so this check trumps
     * the requirement that PLTE appears before IDAT.)
     */
-   else if ((png_ptr->mode & PNG_HAVE_PLTE) != 0)
+   else if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE) )
       png_chunk_error(png_ptr, "duplicate");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT) )
    {
       /* This is benign because the non-benign error happened before, when an
        * IDAT was encountered in a color-mapped image with no PLTE.
@@ -940,7 +939,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   png_ptr->mode |= PNG_HAVE_PLTE;
+   png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
 
    if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
    {
@@ -1033,9 +1032,9 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
        * chunk type to determine whether to check the ancillary or the critical
        * flags.
        */
-      if ((png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_USE) == 0)
+      if ((png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_USE) == 0)
       {
-         if ((png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_NOWARN) != 0)
+         if ((png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_NOWARN) != 0)
             return;
 
          else
@@ -1043,7 +1042,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       }
 
       /* Otherwise, we (optionally) emit a warning and use the chunk. */
-      else if ((png_ptr->flags & PNG_FLAG_CRC_ANCILLARY_NOWARN) == 0)
+      else if ((png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_NOWARN) == 0)
          png_chunk_warning(png_ptr, "CRC error");
    }
 #endif
@@ -1100,11 +1099,11 @@ png_handle_IEND(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 {
    png_debug(1, "in png_handle_IEND");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0 ||
-       (png_ptr->mode & PNG_HAVE_IDAT) == 0)
+   if (! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR) ||
+       ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT))
       png_chunk_error(png_ptr, "out of place");
 
-   png_ptr->mode |= (PNG_AFTER_IDAT | PNG_HAVE_IEND);
+   png_rust_add_mode(png_ptr->rust_ptr, (PNG_AFTER_IDAT | PNG_HAVE_IEND));
 
    png_crc_finish(png_ptr, length);
 
@@ -1123,10 +1122,10 @@ png_handle_gAMA(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_gAMA");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1162,10 +1161,10 @@ png_handle_sBIT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_sBIT");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1243,10 +1242,10 @@ png_handle_cHRM(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_cHRM");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1314,10 +1313,10 @@ png_handle_sRGB(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_sRGB");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1366,10 +1365,10 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_iCCP");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & (PNG_HAVE_IDAT|PNG_HAVE_PLTE)) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1513,7 +1512,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                                      profile + (sizeof profile_header) +
                                      12 * tag_count, &size, 1/*finish*/);
 
-                                 if (length > 0 && !(png_ptr->flags &
+                                 if (length > 0 && ! png_rust_has_flags(png_ptr->rust_ptr,
                                      PNG_FLAG_BENIGN_ERRORS_WARN))
                                     errmsg = "extra compressed data";
 
@@ -1668,10 +1667,10 @@ png_handle_sPLT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    }
 #endif
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1819,10 +1818,10 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_tRNS");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -1872,7 +1871,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    else if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
    {
-      if ((png_ptr->mode & PNG_HAVE_PLTE) == 0)
+      if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PLTE) == 0)
       {
          /* TODO: is this actually an error in the ISO spec? */
          png_crc_finish(png_ptr, length);
@@ -1925,12 +1924,12 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_bKGD");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0 ||
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0 ||
        (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
-       (png_ptr->mode & PNG_HAVE_PLTE) == 0))
+       (png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PLTE) == 0))
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2041,7 +2040,7 @@ png_handle_eXIf(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_eXIf");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
    if (length < 2)
@@ -2105,11 +2104,11 @@ png_handle_hIST(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_hIST");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0 ||
-       (png_ptr->mode & PNG_HAVE_PLTE) == 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0 ||
+       (png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PLTE) == 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2158,10 +2157,10 @@ png_handle_pHYs(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_pHYs");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2204,10 +2203,10 @@ png_handle_oFFs(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_oFFs");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2253,10 +2252,10 @@ png_handle_pCAL(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_pCAL");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2380,10 +2379,10 @@ png_handle_sCAL(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_sCAL");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
+   else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of place");
@@ -2472,7 +2471,7 @@ png_handle_tIME(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_debug(1, "in png_handle_tIME");
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
    else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_tIME) != 0)
@@ -2482,8 +2481,8 @@ png_handle_tIME(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
-      png_ptr->mode |= PNG_AFTER_IDAT;
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
 
    if (length != 7)
    {
@@ -2539,11 +2538,11 @@ png_handle_tEXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    }
 #endif
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
-      png_ptr->mode |= PNG_AFTER_IDAT;
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
 
 #ifdef PNG_MAX_MALLOC_64K
    if (length > 65535U)
@@ -2618,11 +2617,11 @@ png_handle_zTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    }
 #endif
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
-      png_ptr->mode |= PNG_AFTER_IDAT;
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
 
    /* Note, "length" is sufficient here; we won't be adding
     * a null terminator later.
@@ -2735,11 +2734,11 @@ png_handle_iTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    }
 #endif
 
-   if ((png_ptr->mode & PNG_HAVE_IHDR) == 0)
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   if ((png_ptr->mode & PNG_HAVE_IDAT) != 0)
-      png_ptr->mode |= PNG_AFTER_IDAT;
+   if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0)
+      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
 
    buffer = png_read_buffer(png_ptr, length+1, 1/*warn*/);
 
@@ -2885,7 +2884,7 @@ png_cache_unknown_chunk(png_structrp png_ptr, png_uint_32 length)
       /* The following is safe because of the PNG_SIZE_MAX init above */
       png_ptr->unknown_chunk.size = (size_t)length/*SAFE*/;
       /* 'mode' is a flag array, only the bottom four bits matter here */
-      png_ptr->unknown_chunk.location = (png_byte)png_ptr->mode/*SAFE*/;
+      png_ptr->unknown_chunk.location = (png_byte)png_rust_get_mode(png_ptr->rust_ptr)/*SAFE*/;
 
       if (length == 0)
          png_ptr->unknown_chunk.data = NULL;
@@ -3237,7 +3236,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
       end_ptr = dp + PNG_ROWBYTES(pixel_depth, row_width) - 1;
       end_byte = *end_ptr;
 #     ifdef PNG_READ_PACKSWAP_SUPPORTED
-      if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
          /* little-endian byte */
          end_mask = (unsigned int)(0xff << end_mask);
 
@@ -3255,7 +3254,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
     */
 #ifdef PNG_READ_INTERLACING_SUPPORTED
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0 &&
-       (png_ptr->transformations & PNG_INTERLACE) != 0 &&
+       png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE) &&
        pass < 6 && (display == 0 ||
        /* The following copies everything for 'display' on passes 0, 2 and 4. */
        (display == 1 && (pass & 1) != 0)))
@@ -3401,7 +3400,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
          png_uint_32 mask;
 
 #        ifdef PNG_READ_PACKSWAP_SUPPORTED
-         if ((png_ptr->transformations & PNG_PACKSWAP) != 0)
+         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
             mask = MASK(pass, pixel_depth, display, 0);
 
          else
@@ -4237,8 +4236,8 @@ png_read_IDAT_data(png_structrp png_ptr, png_bytep output,
          /* Do this for safety; we won't read any more into this row. */
          png_ptr->zstream.next_out = NULL;
 
-         png_ptr->mode |= PNG_AFTER_IDAT;
-         png_ptr->flags |= PNG_FLAG_ZSTREAM_ENDED;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
 
          if (png_ptr->zstream.avail_in > 0 || png_ptr->idat_size > 0)
             png_chunk_benign_error(png_ptr, "Extra compressed data");
@@ -4281,7 +4280,7 @@ png_read_finish_IDAT(png_structrp png_ptr)
     * read it otherwise stray unread IDAT data or, more likely, an IDAT chunk
     * may still remain to be consumed.
     */
-   if ((png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED) == 0)
+   if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED) )
    {
       /* The NULL causes png_read_IDAT_data to swallow any remaining bytes in
        * the compressed stream, but the stream may be damaged too, so even after
@@ -4293,10 +4292,10 @@ png_read_finish_IDAT(png_structrp png_ptr)
       /* Now clear everything out for safety; the following may not have been
        * done.
        */
-      if ((png_ptr->flags & PNG_FLAG_ZSTREAM_ENDED) == 0)
+      if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED) )
       {
-         png_ptr->mode |= PNG_AFTER_IDAT;
-         png_ptr->flags |= PNG_FLAG_ZSTREAM_ENDED;
+         png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
+         png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
       }
    }
 
@@ -4364,7 +4363,7 @@ png_read_finish_row(png_structrp png_ptr)
             png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
 
-         if ((png_ptr->transformations & PNG_INTERLACE) == 0)
+         if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
          {
             png_ptr->num_rows = (png_ptr->height +
                 png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
@@ -4372,7 +4371,7 @@ png_read_finish_row(png_structrp png_ptr)
                 png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
          }
 
-         else  /* if (png_ptr->transformations & PNG_INTERLACE) */
+         else  /* if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE) */
             break; /* libpng deinterlacing sees every row */
 
       } while (png_ptr->num_rows == 0 || png_ptr->iwidth == 0);
@@ -4413,7 +4412,7 @@ png_read_start_row(png_structrp png_ptr)
 #endif
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
-      if ((png_ptr->transformations & PNG_INTERLACE) == 0)
+      if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
          png_ptr->num_rows = (png_ptr->height + png_pass_yinc[0] - 1 -
              png_pass_ystart[0]) / png_pass_yinc[0];
 
@@ -4445,12 +4444,12 @@ png_read_start_row(png_structrp png_ptr)
     * TODO: fix this.
     */
 #ifdef PNG_READ_PACK_SUPPORTED
-   if ((png_ptr->transformations & PNG_PACK) != 0 && png_ptr->bit_depth < 8)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK) && png_ptr->bit_depth < 8)
       max_pixel_depth = 8;
 #endif
 
 #ifdef PNG_READ_EXPAND_SUPPORTED
-   if ((png_ptr->transformations & PNG_EXPAND) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
    {
       if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
       {
@@ -4482,25 +4481,25 @@ png_read_start_row(png_structrp png_ptr)
 #endif
 
 #ifdef PNG_READ_EXPAND_16_SUPPORTED
-   if ((png_ptr->transformations & PNG_EXPAND_16) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16))
    {
 #  ifdef PNG_READ_EXPAND_SUPPORTED
       /* In fact it is an error if it isn't supported, but checking is
        * the safe way.
        */
-      if ((png_ptr->transformations & PNG_EXPAND) != 0)
+      if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
       {
          if (png_ptr->bit_depth < 16)
             max_pixel_depth *= 2;
       }
       else
 #  endif
-      png_ptr->transformations &= ~PNG_EXPAND_16;
+      png_rust_remove_transformations(png_ptr->rust_ptr, PNG_EXPAND_16);
    }
 #endif
 
 #ifdef PNG_READ_FILLER_SUPPORTED
-   if ((png_ptr->transformations & (PNG_FILLER)) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, (PNG_FILLER)))
    {
       if (png_ptr->color_type == PNG_COLOR_TYPE_GRAY)
       {
@@ -4524,15 +4523,15 @@ png_read_start_row(png_structrp png_ptr)
 #endif
 
 #ifdef PNG_READ_GRAY_TO_RGB_SUPPORTED
-   if ((png_ptr->transformations & PNG_GRAY_TO_RGB) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB))
    {
       if (
 #ifdef PNG_READ_EXPAND_SUPPORTED
           (png_ptr->num_trans != 0 &&
-          (png_ptr->transformations & PNG_EXPAND) != 0) ||
+           png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND)) ||
 #endif
 #ifdef PNG_READ_FILLER_SUPPORTED
-          (png_ptr->transformations & (PNG_FILLER)) != 0 ||
+          png_rust_has_transformations(png_ptr->rust_ptr, (PNG_FILLER)) ||
 #endif
           png_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
       {
@@ -4565,7 +4564,7 @@ png_read_start_row(png_structrp png_ptr)
 
 #if defined(PNG_READ_USER_TRANSFORM_SUPPORTED) && \
 defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
-   if ((png_ptr->transformations & PNG_USER_TRANSFORM) != 0)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM))
    {
       unsigned int user_pixel_depth = png_ptr->user_transform_depth *
          png_ptr->user_transform_channels;
@@ -4675,6 +4674,6 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
    if (png_inflate_claim(png_ptr, png_IDAT) != Z_OK)
       png_error(png_ptr, png_ptr->zstream.msg);
 
-   png_ptr->flags |= PNG_FLAG_ROW_INIT;
+   png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ROW_INIT);
 }
 #endif /* READ */
