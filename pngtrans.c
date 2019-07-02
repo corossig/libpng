@@ -151,7 +151,7 @@ png_set_filler(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
          /* On write the usr_channels parameter must be set correctly at the
           * start to record the number of channels in the app-supplied data.
           */
-         switch (png_ptr->color_type)
+         switch (png_rust_get_color_type(png_ptr->rust_ptr))
          {
             case PNG_COLOR_TYPE_RGB:
                png_ptr->usr_channels = 4;

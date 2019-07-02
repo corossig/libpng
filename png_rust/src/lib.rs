@@ -6,6 +6,21 @@ enum PngInterlace {
 }
 
 bitflags! {
+    struct PngColor: u8 {
+        const MASK_PALETTE = 0x1;
+        const MASK_COLOR   = 0x2;
+        const MASK_ALPHA   = 0x4;
+
+        const TYPE_GRAY       = 0x0;
+        const TYPE_PALETTE    = 0x2 | 0x1;
+        const TYPE_RGB        = 0x2;
+        const TYPE_RGB_ALPHA  = 0x2 | 0x4;
+        const TYPE_GRAY_ALPHA = 0x4;
+    }
+}
+
+
+bitflags! {
     struct PngFlags: u32 {
         const ZLIB_CUSTOM_STRATEGY  = 0x1;
         const ZSTREAM_INITIALIZED   = 0x2;
@@ -104,6 +119,14 @@ pub struct Png {
     compression: u8, /* file compression type (always 0) */
     interlaced: Option<PngInterlace>,
     filter: u8,      /* file filter type (always 0) */
+
+    num_trans: u16,       /* number of transparency values */
+    do_filter: u8,        /* row filter flags (see PNG_FILTER_ in png.h ) */
+    color_type: PngColor, /* color type of file */
+    bit_depth: u8,        /* bit depth of file */
+    usr_bit_depth: u8,    /* bit depth of users row: write only */
+    pixel_depth: u8,      /* number of bits per pixel */
+    channels: u8,         /* number of channels in file */
 }
 
 impl Drop for Png {
@@ -124,7 +147,14 @@ pub extern fn png_rust_new() -> *mut Png
         pass : 0,
         compression : 0,
         interlaced: None,
-        filter : 0
+        filter : 0,
+        num_trans: 0,
+        do_filter: 0,
+        color_type: PngColor::MASK_PALETTE,
+        bit_depth: 0,
+        usr_bit_depth: 0,
+        pixel_depth: 0,
+        channels: 0,
     });
     Box::into_raw(obj)
 }
@@ -393,6 +423,44 @@ pub extern fn png_rust_reset_transformations(this: *mut Png)
 }
 
 
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub extern fn png_rust_get_color_type(this: *const Png) -> u8
+{
+    unsafe {
+        (*this).color_type.bits()
+    }
+}
+
+#[no_mangle]
+pub extern fn png_rust_set_color_type(this: *mut Png, color_type: u8)
+{
+    let color_type = PngColor::from_bits_truncate(color_type);
+    unsafe {
+        (*this).color_type = color_type;
+    }
+}
+
+#[no_mangle]
+pub extern fn png_rust_has_color_type(this: *const Png, color_type: u8) -> bool
+{
+    let color_type = PngColor::from_bits_truncate(color_type);
+    unsafe {
+        (*this).color_type.contains(color_type)
+    }
+}
+
+#[no_mangle]
+pub extern fn png_rust_is_color_type(this: *const Png, color_type: u8) -> bool
+{
+    let color_type = PngColor::from_bits_truncate(color_type);
+    unsafe {
+        (*this).color_type.bits == color_type.bits()
+    }
+}
+
+
 #[no_mangle]
 pub extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u32)
 {
@@ -400,7 +468,7 @@ pub extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u32)
     unsafe {
         flags = &mut (*this).flags;
     }
-    
+
     let mut strip_mode_without_errors = PngFlags::from_bits_truncate(strip_mode);
     strip_mode_without_errors.remove(PngFlags::STRIP_ERROR_NUMBERS | PngFlags::STRIP_ERROR_TEXT);
     flags.remove(strip_mode_without_errors);

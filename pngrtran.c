@@ -994,7 +994,7 @@ png_set_rgb_to_gray_fixed(png_structrp png_ptr, int error_action,
          png_error(png_ptr, "invalid error action to rgb_to_gray");
    }
 
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
 #ifdef PNG_READ_EXPAND_SUPPORTED
       png_rust_add_transformations(png_ptr->rust_ptr, PNG_EXPAND);
 #else
@@ -1207,7 +1207,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
     * is any alpha or transparency in the image and simply cancel the
     * background and alpha mode stuff if there isn't.
     */
-   int input_has_alpha = (png_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0;
+   int input_has_alpha = png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA);
    int input_has_transparency = png_ptr->num_trans > 0;
 
    /* If no alpha we can optimize. */
@@ -1236,7 +1236,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
     * because PNG_BACKGROUND_EXPAND is cancelled below.
     */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND | PNG_EXPAND) &&
-       (png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
+       ! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
        /* i.e., GRAY or GRAY_ALPHA */
    {
       {
@@ -1452,7 +1452,7 @@ png_init_read_transformations(png_structrp png_ptr)
       /* PNG_BACKGROUND_EXPAND: the background is in the file color space, so if
        * the file was grayscale the background value is gray.
        */
-      if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
+      if (! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
          png_rust_add_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY);
    }
 
@@ -1487,7 +1487,7 @@ png_init_read_transformations(png_structrp png_ptr)
     * leads to the reported bug that the palette returned by png_get_PLTE is not
     * updated.
     */
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       png_init_palette_transformations(png_ptr);
 
    else
@@ -1596,7 +1596,7 @@ png_init_read_transformations(png_structrp png_ptr)
             png_warning(png_ptr,
                 "libpng does not support gamma+background+rgb_to_gray");
 
-         if ((png_ptr->color_type == PNG_COLOR_TYPE_PALETTE) != 0)
+         if ((png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)) != 0)
          {
             /* We don't get to here unless there is a tRNS chunk with non-opaque
              * entries - see the checking code at the start of this function.
@@ -1811,7 +1811,7 @@ png_init_read_transformations(png_structrp png_ptr)
       else
       /* Transformation does not include PNG_BACKGROUND */
 #endif /* READ_BACKGROUND */
-      if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE
+      if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
          /* RGB_TO_GRAY needs to have non-gamma-corrected values! */
          && ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND) ||
@@ -1845,7 +1845,7 @@ png_init_read_transformations(png_structrp png_ptr)
 #ifdef PNG_READ_BACKGROUND_SUPPORTED
    /* No GAMMA transformation (see the hanging else 4 lines above) */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
-       (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE))
+       (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
    {
       int i;
       int istop = (int)png_ptr->num_trans;
@@ -1884,7 +1884,7 @@ png_init_read_transformations(png_structrp png_ptr)
 #ifdef PNG_READ_SHIFT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT) &&
        ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND) &&
-       (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE))
+       (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
    {
       int i;
       int istop = png_ptr->num_palette;
@@ -4888,12 +4888,12 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
        */
        !(png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        ((png_ptr->num_trans != 0) ||
-       (png_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)) &&
+       png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))) &&
 #endif
       /* Because png_init_read_transformations transforms the palette, unless
        * RGB_TO_GRAY will do the transform.
        */
-       (png_ptr->color_type != PNG_COLOR_TYPE_PALETTE))
+       (! png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
       png_do_gamma(row_info, png_ptr->row_buf + 1, png_ptr);
 #endif
 

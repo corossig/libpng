@@ -1,4 +1,3 @@
-
 /* png.h - header file for PNG reference library
  *
  * libpng version 1.6.38.git
@@ -670,6 +669,7 @@ typedef png_unknown_chunk * * png_unknown_chunkpp;
 #define PNG_COLOR_TYPE_RGB        (PNG_COLOR_MASK_COLOR)
 #define PNG_COLOR_TYPE_RGB_ALPHA  (PNG_COLOR_MASK_COLOR | PNG_COLOR_MASK_ALPHA)
 #define PNG_COLOR_TYPE_GRAY_ALPHA (PNG_COLOR_MASK_ALPHA)
+
 /* aliases */
 #define PNG_COLOR_TYPE_RGBA  PNG_COLOR_TYPE_RGB_ALPHA
 #define PNG_COLOR_TYPE_GA  PNG_COLOR_TYPE_GRAY_ALPHA

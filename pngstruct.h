@@ -242,13 +242,7 @@ struct png_struct_def
    int num_palette_max;       /* maximum palette index found in IDAT */
 #endif
 
-   png_uint_16 num_trans;     /* number of transparency values */
-   png_byte do_filter;        /* row filter flags (see PNG_FILTER_ in png.h ) */
-   png_byte color_type;       /* color type of file */
-   png_byte bit_depth;        /* bit depth of file */
-   png_byte usr_bit_depth;    /* bit depth of users row: write only */
-   png_byte pixel_depth;      /* number of bits per pixel */
-   png_byte channels;         /* number of channels in file */
+
 #ifdef PNG_WRITE_SUPPORTED
    png_byte usr_channels;     /* channels at start of write: write only */
 #endif

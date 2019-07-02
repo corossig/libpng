@@ -868,14 +868,14 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_ptr->height = height;
    png_ptr->bit_depth = (png_byte)bit_depth;
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
-   png_ptr->color_type = (png_byte)color_type;
+   png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
    png_ptr->filter_type = (png_byte)filter_type;
 #endif
    png_ptr->compression_type = (png_byte)compression_type;
 
    /* Find number of channels */
-   switch (png_ptr->color_type)
+   switch (png_rust_get_color_type(png_ptr->rust_ptr))
    {
       default: /* invalid, png_set_IHDR calls png_error */
       case PNG_COLOR_TYPE_GRAY:
@@ -941,7 +941,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
+   if (! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "ignored in grayscale PNG");
@@ -949,7 +949,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    }
 
 #ifndef PNG_READ_OPT_PLTE_SUPPORTED
-   if (png_ptr->color_type != PNG_COLOR_TYPE_PALETTE)
+   if (! png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
    {
       png_crc_finish(png_ptr, length);
       return;
@@ -960,7 +960,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    {
       png_crc_finish(png_ptr, length);
 
-      if (png_ptr->color_type != PNG_COLOR_TYPE_PALETTE)
+      if (! png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
          png_chunk_benign_error(png_ptr, "invalid");
 
       else
@@ -977,7 +977,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * libpng versions. We silently truncate the unused extra palette entries
     * here.
     */
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       max_palette_length = (1 << png_ptr->bit_depth);
    else
       max_palette_length = PNG_MAX_PALETTE_LENGTH;
@@ -1014,7 +1014,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * we will act as though it is.
     */
 #ifndef PNG_READ_OPT_PLTE_SUPPORTED
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
 #endif
    {
       png_crc_finish(png_ptr, (png_uint_32) (length - (unsigned int)num * 3));
@@ -1178,7 +1178,7 @@ png_handle_sBIT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
    {
       truelen = 3;
       sample_depth = 8;
@@ -1212,7 +1212,7 @@ png_handle_sBIT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       }
    }
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
+   if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
    {
       png_ptr->sig_bit.red = buf[0];
       png_ptr->sig_bit.green = buf[1];
@@ -1469,7 +1469,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                       */
                      if (png_icc_check_header(png_ptr, &png_ptr->colorspace,
                          keyword, profile_length, profile_header,
-                         png_ptr->color_type) != 0)
+                         png_rust_get_color_type(png_ptr->rust_ptr)) != 0)
                      {
                         /* Now read the tag table; a variable size buffer is
                          * needed at this point, allocate one for the whole
@@ -1835,7 +1835,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   if (png_ptr->color_type == PNG_COLOR_TYPE_GRAY)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_GRAY))
    {
       png_byte buf[2];
 
@@ -1851,7 +1851,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       png_ptr->trans_color.gray = png_get_uint_16(buf);
    }
 
-   else if (png_ptr->color_type == PNG_COLOR_TYPE_RGB)
+   else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB))
    {
       png_byte buf[6];
 
@@ -1869,7 +1869,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       png_ptr->trans_color.blue = png_get_uint_16(buf + 4);
    }
 
-   else if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
    {
       if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PLTE) == 0)
       {
@@ -1928,7 +1928,7 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       png_chunk_error(png_ptr, "missing IHDR");
 
    else if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IDAT) != 0 ||
-       (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
+       (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) &&
        (png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_PLTE) == 0))
    {
       png_crc_finish(png_ptr, length);
@@ -1943,10 +1943,10 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       truelen = 1;
 
-   else if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
+   else if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
       truelen = 6;
 
    else
@@ -1969,7 +1969,7 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * so it is easy to determine the RGB values of the background color
     * from the info_ptr struct.
     */
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
    {
       background.index = buf[0];
 
@@ -1992,7 +1992,7 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       background.gray = 0;
    }
 
-   else if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0) /* GRAY */
+   else if (! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR)) /* GRAY */
    {
       if (png_ptr->bit_depth <= 8)
       {
@@ -4451,7 +4451,7 @@ png_read_start_row(png_structrp png_ptr)
 #ifdef PNG_READ_EXPAND_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
    {
-      if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       {
          if (png_ptr->num_trans != 0)
             max_pixel_depth = 32;
@@ -4460,7 +4460,7 @@ png_read_start_row(png_structrp png_ptr)
             max_pixel_depth = 24;
       }
 
-      else if (png_ptr->color_type == PNG_COLOR_TYPE_GRAY)
+      else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_GRAY))
       {
          if (max_pixel_depth < 8)
             max_pixel_depth = 8;
@@ -4469,7 +4469,7 @@ png_read_start_row(png_structrp png_ptr)
             max_pixel_depth *= 2;
       }
 
-      else if (png_ptr->color_type == PNG_COLOR_TYPE_RGB)
+      else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB))
       {
          if (png_ptr->num_trans != 0)
          {
@@ -4501,7 +4501,7 @@ png_read_start_row(png_structrp png_ptr)
 #ifdef PNG_READ_FILLER_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, (PNG_FILLER)))
    {
-      if (png_ptr->color_type == PNG_COLOR_TYPE_GRAY)
+      if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_GRAY))
       {
          if (max_pixel_depth <= 8)
             max_pixel_depth = 16;
@@ -4510,8 +4510,8 @@ png_read_start_row(png_structrp png_ptr)
             max_pixel_depth = 32;
       }
 
-      else if (png_ptr->color_type == PNG_COLOR_TYPE_RGB ||
-         png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB) ||
+         png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       {
          if (max_pixel_depth <= 32)
             max_pixel_depth = 32;
@@ -4533,7 +4533,7 @@ png_read_start_row(png_structrp png_ptr)
 #ifdef PNG_READ_FILLER_SUPPORTED
           png_rust_has_transformations(png_ptr->rust_ptr, (PNG_FILLER)) ||
 #endif
-          png_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+          png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_GRAY_ALPHA))
       {
          if (max_pixel_depth <= 16)
             max_pixel_depth = 32;
@@ -4546,14 +4546,14 @@ png_read_start_row(png_structrp png_ptr)
       {
          if (max_pixel_depth <= 8)
          {
-            if (png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA)
+            if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA))
                max_pixel_depth = 32;
 
             else
                max_pixel_depth = 24;
          }
 
-         else if (png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA)
+         else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA))
             max_pixel_depth = 64;
 
          else

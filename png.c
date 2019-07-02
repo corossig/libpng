@@ -4236,7 +4236,7 @@ png_build_gamma_table(png_structrp png_ptr, int bit_depth)
    {
       png_byte shift, sig_bit;
 
-      if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
+      if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
       {
          sig_bit = png_ptr->sig_bit.red;
 

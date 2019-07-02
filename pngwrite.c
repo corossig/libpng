@@ -823,7 +823,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 #endif
 
    /* Set up row info for transformations */
-   row_info.color_type = png_ptr->color_type;
+   row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
    row_info.width = png_ptr->usr_width;
    row_info.channels = png_ptr->usr_channels;
    row_info.bit_depth = png_ptr->usr_bit_depth;

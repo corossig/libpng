@@ -115,7 +115,7 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
          if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
             png_chunk_error(png_ptr, "Missing IHDR before IDAT");
 
-         else if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
+         else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) &&
                   ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE))
             png_chunk_error(png_ptr, "Missing PLTE before IDAT");
 
@@ -397,7 +397,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 
    /* 1.5.6: row_info moved out of png_struct to a local here. */
    row_info.width = png_ptr->iwidth; /* NOTE: width of current interlaced row */
-   row_info.color_type = png_ptr->color_type;
+   row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
    row_info.bit_depth = png_ptr->bit_depth;
    row_info.channels = png_ptr->channels;
    row_info.pixel_depth = png_ptr->pixel_depth;
@@ -783,7 +783,7 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
 
 #ifdef PNG_READ_CHECK_FOR_INVALID_INDEX_SUPPORTED
    /* Report invalid palette index; added at libng-1.5.10 */
-   if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE &&
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) &&
        png_ptr->num_palette_max > png_ptr->num_palette)
       png_benign_error(png_ptr, "Read palette index exceeding num_palette");
 #endif
@@ -1355,10 +1355,10 @@ png_image_format(png_structrp png_ptr)
 {
    png_uint_32 format = 0;
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
       format |= PNG_FORMAT_FLAG_COLOR;
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
       format |= PNG_FORMAT_FLAG_ALPHA;
 
    /* Use png_ptr here, not info_ptr, because by examination png_handle_tRNS
@@ -1372,7 +1372,7 @@ png_image_format(png_structrp png_ptr)
    if (png_ptr->bit_depth == 16)
       format |= PNG_FORMAT_FLAG_LINEAR;
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_PALETTE) != 0)
+   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_PALETTE))
       format |= PNG_FORMAT_FLAG_COLORMAP;
 
    return format;
@@ -1442,7 +1442,7 @@ png_image_read_header(png_voidp argument)
    {
       png_uint_32 cmap_entries;
 
-      switch (png_ptr->color_type)
+      switch (png_rust_get_color_type(png_ptr->rust_ptr))
       {
          case PNG_COLOR_TYPE_GRAY:
             cmap_entries = 1U << png_ptr->bit_depth;
@@ -2115,7 +2115,7 @@ png_image_read_colormap(png_voidp argument)
     * what possible use it is because the application can't control the
     * color-map.
     */
-   if (((png_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0 ||
+   if ((png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA) ||
          png_ptr->num_trans > 0) /* alpha in input */ &&
       ((output_format & PNG_FORMAT_FLAG_ALPHA) == 0) /* no alpha in output */)
    {
@@ -2176,7 +2176,7 @@ png_image_read_colormap(png_voidp argument)
     * output transformations; this code works out how to produce bytes of
     * color-map entries from the original format.
     */
-   switch (png_ptr->color_type)
+   switch (png_rust_get_color_type(png_ptr->rust_ptr))
    {
       case PNG_COLOR_TYPE_GRAY:
          if (png_ptr->bit_depth <= 8)
@@ -2527,7 +2527,7 @@ png_image_read_colormap(png_voidp argument)
             /* The output will now be one or two 8-bit gray or gray+alpha
              * channels.  The more complex case arises when the input has alpha.
              */
-            if ((png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+            if ((png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
                png_ptr->num_trans > 0) &&
                (output_format & PNG_FORMAT_FLAG_ALPHA) != 0)
             {
@@ -2562,7 +2562,7 @@ png_image_read_colormap(png_voidp argument)
                 * duplicate palette entries, but that's better than the
                 * alternative of double gamma correction.
                 */
-               if ((png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+               if ((png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
                   png_ptr->num_trans > 0) &&
                   png_gamma_not_sRGB(png_ptr->colorspace.gamma) != 0)
                {
@@ -2575,7 +2575,7 @@ png_image_read_colormap(png_voidp argument)
 
                /* But if the input has alpha or transparency it must be removed
                 */
-               if (png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+               if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
                   png_ptr->num_trans > 0)
                {
                   png_color_16 c;
@@ -2646,7 +2646,7 @@ png_image_read_colormap(png_voidp argument)
             data_encoding = P_sRGB;
 
             /* Is there any transparency or alpha? */
-            if (png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
+            if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
                png_ptr->num_trans > 0)
             {
                /* Is there alpha in the output too?  If so all four channels are
@@ -2871,7 +2871,7 @@ png_image_read_colormap(png_voidp argument)
 
    /* Now deal with the output processing */
    if (expand_tRNS != 0 && png_ptr->num_trans > 0 &&
-       (png_ptr->color_type & PNG_COLOR_MASK_ALPHA) == 0)
+       ! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
       png_set_tRNS_to_alpha(png_ptr);
 
    switch (data_encoding)

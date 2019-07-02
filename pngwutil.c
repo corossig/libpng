@@ -792,7 +792,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
 
    /* Save the relevant information */
    png_ptr->bit_depth = (png_byte)bit_depth;
-   png_ptr->color_type = (png_byte)color_type;
+   png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
    png_ptr->filter_type = (png_byte)filter_type;
@@ -822,7 +822,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
 
    if ((png_ptr->do_filter) == PNG_NO_FILTERS)
    {
-      if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE ||
+      if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) ||
           png_ptr->bit_depth < 8)
          png_ptr->do_filter = PNG_FILTER_NONE;
 
@@ -847,7 +847,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
 
    png_debug(1, "in png_write_PLTE");
 
-   max_palette_length = (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE) ?
+   max_palette_length = (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)) ?
       (1 << png_ptr->bit_depth) : PNG_MAX_PALETTE_LENGTH;
 
    if ((
@@ -856,7 +856,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
 #endif
        num_pal == 0) || num_pal > max_palette_length)
    {
-      if (png_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       {
          png_error(png_ptr, "Invalid number of colors in palette");
       }
@@ -868,7 +868,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
       }
    }
 
-   if ((png_ptr->color_type & PNG_COLOR_MASK_COLOR) == 0)
+   if (! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
    {
       png_warning(png_ptr,
           "Ignoring request to write a PLTE chunk in grayscale PNG");
