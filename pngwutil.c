@@ -57,10 +57,10 @@ png_write_sig(png_structrp png_ptr)
 #endif
 
    /* Write the rest of the 8 byte signature */
-   png_write_data(png_ptr, &png_signature[png_ptr->sig_bytes],
-       (size_t)(8 - png_ptr->sig_bytes));
+   png_write_data(png_ptr, &png_signature[png_rust_get_sig_bytes(png_ptr->rust_ptr)],
+       (size_t)(8 - png_rust_get_sig_bytes(png_ptr->rust_ptr)));
 
-   if (png_ptr->sig_bytes < 3)
+   if (png_rust_get_sig_bytes(png_ptr->rust_ptr) < 3)
       png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE);
 }
 
@@ -95,7 +95,7 @@ png_write_chunk_header(png_structrp png_ptr, png_uint_32 chunk_name,
    png_write_data(png_ptr, buf, 8);
 
    /* Put the chunk name into png_ptr->chunk_name */
-   png_ptr->chunk_name = chunk_name;
+   png_rust_set_chunk_name(png_ptr->rust_ptr, chunk_name);
 
    /* Reset the crc and run it over the chunk name */
    png_reset_crc(png_ptr);
@@ -156,7 +156,7 @@ png_write_chunk_end(png_structrp png_ptr)
 #endif
 
    /* Write the crc in a single operation */
-   png_save_uint_32(buf, png_ptr->crc);
+   png_save_uint_32(buf, png_rust_get_crc(png_ptr->rust_ptr));
 
    png_write_data(png_ptr, buf, 4);
 }
@@ -205,16 +205,16 @@ png_image_size(png_structrp png_ptr)
    /* Only return sizes up to the maximum of a png_uint_32; do this by limiting
     * the width and height used to 15 bits.
     */
-   png_uint_32 h = png_ptr->height;
+   png_uint_32 h = png_rust_get_height(png_ptr->rust_ptr);
 
-   if (png_ptr->rowbytes < 32768 && h < 32768)
+   if (png_rust_get_rowbytes(png_ptr->rust_ptr) < 32768 && h < 32768)
    {
       if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
       {
          /* Interlacing makes the image larger because of the replication of
           * both the filter byte and the padding to a byte boundary.
           */
-         png_uint_32 w = png_ptr->width;
+         png_uint_32 w = png_rust_get_width(png_ptr->rust_ptr);
          unsigned int pd = png_rust_get_pixel_depth(png_ptr->rust_ptr);
          png_alloc_size_t cb_base;
          int pass;
@@ -231,7 +231,7 @@ png_image_size(png_structrp png_ptr)
       }
 
       else
-         return (png_ptr->rowbytes+1) * h;
+         return (png_rust_get_rowbytes(png_ptr->rust_ptr)+1) * h;
    }
 
    else
@@ -798,15 +798,15 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    png_ptr->filter_type = (png_byte)filter_type;
 #endif
    png_ptr->compression_type = (png_byte)compression_type;
-   png_ptr->width = width;
-   png_ptr->height = height;
+   png_rust_set_width(png_ptr->rust_ptr, width);
+   png_rust_set_height(png_ptr->rust_ptr, height);
 
    png_rust_set_pixel_depth(png_ptr->rust_ptr, (png_byte)(bit_depth * png_rust_get_channels(png_ptr->rust_ptr)));
-   png_ptr->rowbytes = PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), width);
+   png_rust_set_rowbytes(png_ptr->rust_ptr, PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), width));
    /* Set the usr info, so any transformations can modify it */
-   png_ptr->usr_width = png_ptr->width;
+   png_rust_set_usr_width(png_ptr->rust_ptr, png_rust_get_width(png_ptr->rust_ptr));
    png_rust_set_usr_bit_depth(png_ptr->rust_ptr, png_rust_get_bit_depth(png_ptr->rust_ptr));
-   png_ptr->usr_channels = png_rust_get_channels(png_ptr->rust_ptr);
+   png_rust_set_usr_channels(png_ptr->rust_ptr, png_rust_get_channels(png_ptr->rust_ptr));
 
    /* Pack the header information into the buffer */
    png_save_uint_32(buf, width);
@@ -876,8 +876,8 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
       return;
    }
 
-   png_ptr->num_palette = (png_uint_16)num_pal;
-   png_debug1(3, "num_palette = %d", png_ptr->num_palette);
+   png_rust_set_num_palette(png_ptr->rust_ptr, (png_uint_16)num_pal);
+   png_debug1(3, "num_palette = %d", png_rust_get_num_palette(png_ptr->rust_ptr));
 
    png_write_chunk_header(png_ptr, png_PLTE, (png_uint_32)(num_pal * 3));
 #ifdef PNG_POINTER_INDEXING_SUPPORTED
@@ -1353,7 +1353,7 @@ png_write_tRNS(png_structrp png_ptr, png_const_bytep trans_alpha,
 
    if (color_type == PNG_COLOR_TYPE_PALETTE)
    {
-      if (num_trans <= 0 || num_trans > (int)png_ptr->num_palette)
+      if (num_trans <= 0 || num_trans > (int)png_rust_get_num_palette(png_ptr->rust_ptr))
       {
          png_app_warning(png_ptr,
              "Invalid number of transparent colors specified");
@@ -1420,10 +1420,10 @@ png_write_bKGD(png_structrp png_ptr, png_const_color_16p back, int color_type)
    {
       if (
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-          (png_ptr->num_palette != 0 ||
+          (png_rust_get_num_palette(png_ptr->rust_ptr) != 0 ||
           (png_ptr->mng_features_permitted & PNG_FLAG_MNG_EMPTY_PLTE) == 0) &&
 #endif
-         back->index >= png_ptr->num_palette)
+         back->index >= png_rust_get_num_palette(png_ptr->rust_ptr))
       {
          png_warning(png_ptr, "Invalid background palette index");
          return;
@@ -1502,10 +1502,10 @@ png_write_hIST(png_structrp png_ptr, png_const_uint_16p hist, int num_hist)
 
    png_debug(1, "in png_write_hIST");
 
-   if (num_hist > (int)png_ptr->num_palette)
+   if (num_hist > (int)png_rust_get_num_palette(png_ptr->rust_ptr))
    {
       png_debug2(3, "num_hist = %d, num_palette = %d", num_hist,
-          png_ptr->num_palette);
+          png_rust_get_num_palette(png_ptr->rust_ptr));
 
       png_warning(png_ptr, "Invalid number of histogram entries specified");
       return;
@@ -1913,25 +1913,25 @@ png_write_start_row(png_structrp png_ptr)
 
    png_debug(1, "in png_write_start_row");
 
-   usr_pixel_depth = png_ptr->usr_channels * png_rust_get_usr_bit_depth(png_ptr->rust_ptr);
-   buf_size = PNG_ROWBYTES(usr_pixel_depth, png_ptr->width) + 1;
+   usr_pixel_depth = png_rust_get_usr_channels(png_ptr->rust_ptr) * png_rust_get_usr_bit_depth(png_ptr->rust_ptr);
+   buf_size = PNG_ROWBYTES(usr_pixel_depth, png_rust_get_width(png_ptr->rust_ptr)) + 1;
 
    /* 1.5.6: added to allow checking in the row write code. */
-   png_ptr->transformed_pixel_depth = png_rust_get_pixel_depth(png_ptr->rust_ptr);
-   png_ptr->maximum_pixel_depth = (png_byte)usr_pixel_depth;
+   png_rust_set_transformed_pixel_depth(png_ptr->rust_ptr, png_rust_get_pixel_depth(png_ptr->rust_ptr));
+   png_rust_set_maximum_pixel_depth(png_ptr->rust_ptr, (png_byte)usr_pixel_depth);
 
    /* Set up row buffer */
-   png_ptr->row_buf = png_voidcast(png_bytep, png_malloc(png_ptr, buf_size));
+   png_rust_set_row_buf(png_ptr->rust_ptr, png_voidcast(png_bytep, png_malloc(png_ptr, buf_size)));
 
-   png_ptr->row_buf[0] = PNG_FILTER_VALUE_NONE;
+   png_rust_get_row_buf(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_NONE;
 
 #ifdef PNG_WRITE_FILTER_SUPPORTED
    filters = png_rust_get_do_filter(png_ptr->rust_ptr);
 
-   if (png_ptr->height == 1)
+   if (png_rust_get_height(png_ptr->rust_ptr) == 1)
       filters &= 0xff & ~(PNG_FILTER_UP|PNG_FILTER_AVG|PNG_FILTER_PAETH);
 
-   if (png_ptr->width == 1)
+   if (png_rust_get_width(png_ptr->rust_ptr) == 1)
       filters &= 0xff & ~(PNG_FILTER_SUB|PNG_FILTER_AVG|PNG_FILTER_PAETH);
 
    if (filters == 0)
@@ -1940,11 +1940,11 @@ png_write_start_row(png_structrp png_ptr)
    png_rust_set_do_filter(png_ptr->rust_ptr, filters);
 
    if (((filters & (PNG_FILTER_SUB | PNG_FILTER_UP | PNG_FILTER_AVG |
-       PNG_FILTER_PAETH)) != 0) && png_ptr->try_row == NULL)
+       PNG_FILTER_PAETH)) != 0) && png_rust_get_try_row(png_ptr->rust_ptr) == NULL)
    {
       int num_filters = 0;
 
-      png_ptr->try_row = png_voidcast(png_bytep, png_malloc(png_ptr, buf_size));
+      png_rust_set_try_row(png_ptr->rust_ptr, png_voidcast(png_bytep, png_malloc(png_ptr, buf_size)));
 
       if (filters & PNG_FILTER_SUB)
          num_filters++;
@@ -1959,16 +1959,16 @@ png_write_start_row(png_structrp png_ptr)
          num_filters++;
 
       if (num_filters > 1)
-         png_ptr->tst_row = png_voidcast(png_bytep, png_malloc(png_ptr,
-             buf_size));
+         png_rust_set_tst_row(png_ptr->rust_ptr, png_voidcast(png_bytep, png_malloc(png_ptr,
+             buf_size)));
    }
 
    /* We only need to keep the previous row if we are using one of the following
     * filters.
     */
    if ((filters & (PNG_FILTER_AVG | PNG_FILTER_UP | PNG_FILTER_PAETH)) != 0)
-      png_ptr->prev_row = png_voidcast(png_bytep,
-          png_calloc(png_ptr, buf_size));
+      png_rust_set_prev_row(png_ptr->rust_ptr, png_voidcast(png_bytep,
+          png_calloc(png_ptr, buf_size)));
 #endif /* WRITE_FILTER */
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
@@ -1977,25 +1977,25 @@ png_write_start_row(png_structrp png_ptr)
    {
       if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
       {
-         png_ptr->num_rows = (png_ptr->height + png_pass_yinc[0] - 1 -
-             png_pass_ystart[0]) / png_pass_yinc[0];
+         png_rust_set_num_rows(png_ptr->rust_ptr, (png_rust_get_height(png_ptr->rust_ptr) + png_pass_yinc[0] - 1 -
+             png_pass_ystart[0]) / png_pass_yinc[0]);
 
-         png_ptr->usr_width = (png_ptr->width + png_pass_inc[0] - 1 -
-             png_pass_start[0]) / png_pass_inc[0];
+         png_rust_set_usr_width(png_ptr->rust_ptr, (png_rust_get_width(png_ptr->rust_ptr) + png_pass_inc[0] - 1 -
+             png_pass_start[0]) / png_pass_inc[0]);
       }
 
       else
       {
-         png_ptr->num_rows = png_ptr->height;
-         png_ptr->usr_width = png_ptr->width;
+         png_rust_set_num_rows(png_ptr->rust_ptr, png_rust_get_height(png_ptr->rust_ptr));
+         png_rust_set_usr_width(png_ptr->rust_ptr, png_rust_get_width(png_ptr->rust_ptr));
       }
    }
 
    else
 #endif
    {
-      png_ptr->num_rows = png_ptr->height;
-      png_ptr->usr_width = png_ptr->width;
+      png_rust_set_num_rows(png_ptr->rust_ptr, png_rust_get_height(png_ptr->rust_ptr));
+      png_rust_set_usr_width(png_ptr->rust_ptr, png_rust_get_width(png_ptr->rust_ptr));
    }
 }
 
@@ -2022,17 +2022,17 @@ png_write_finish_row(png_structrp png_ptr)
    png_debug(1, "in png_write_finish_row");
 
    /* Next row */
-   png_ptr->row_number++;
+   png_rust_incr_row_number(png_ptr->rust_ptr);
 
    /* See if we are done */
-   if (png_ptr->row_number < png_ptr->num_rows)
+   if (png_rust_get_row_number(png_ptr->rust_ptr) < png_rust_get_num_rows(png_ptr->rust_ptr))
       return;
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* If interlaced, go to next pass */
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
-      png_ptr->row_number = 0;
+      png_rust_set_row_number(png_ptr->rust_ptr, 0);
       if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE) )
       {
          png_rust_incr_pass(png_ptr->rust_ptr);
@@ -2048,30 +2048,30 @@ png_write_finish_row(png_structrp png_ptr)
             if ( ! png_rust_pass_is_valid(png_ptr->rust_ptr) )
                break;
 
-            png_ptr->usr_width = (png_ptr->width +
+            png_rust_set_usr_width(png_ptr->rust_ptr, (png_rust_get_width(png_ptr->rust_ptr) +
                 png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
                 png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
-                png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
+                png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)]);
 
-            png_ptr->num_rows = (png_ptr->height +
+            png_rust_set_num_rows(png_ptr->rust_ptr, (png_rust_get_height(png_ptr->rust_ptr) +
                 png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
                 png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
-                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)]);
 
             if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
                break;
 
-         } while (png_ptr->usr_width == 0 || png_ptr->num_rows == 0);
+         } while (png_rust_get_usr_width(png_ptr->rust_ptr) == 0 || png_rust_get_num_rows(png_ptr->rust_ptr) == 0);
 
       }
 
       /* Reset the row above the image for the next pass */
       if (png_rust_pass_is_valid(png_ptr->rust_ptr))
       {
-         if (png_ptr->prev_row != NULL)
-            memset(png_ptr->prev_row, 0,
-                PNG_ROWBYTES(png_ptr->usr_channels *
-                png_rust_get_usr_bit_depth(png_ptr->rust_ptr), png_ptr->width) + 1);
+         if (png_rust_get_prev_row(png_ptr->rust_ptr) != NULL)
+            memset(png_rust_get_prev_row(png_ptr->rust_ptr), 0,
+                PNG_ROWBYTES(png_rust_get_usr_channels(png_ptr->rust_ptr) *
+                png_rust_get_usr_bit_depth(png_ptr->rust_ptr), png_rust_get_width(png_ptr->rust_ptr)) + 1);
 
          return;
       }
@@ -2283,9 +2283,9 @@ png_setup_sub_row(png_structrp png_ptr, png_uint_32 bpp,
    size_t sum = 0;
    unsigned int v;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_SUB;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_SUB;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1; i < bpp;
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1; i < bpp;
         i++, rp++, dp++)
    {
       v = *dp = *rp;
@@ -2296,7 +2296,7 @@ png_setup_sub_row(png_structrp png_ptr, png_uint_32 bpp,
 #endif
    }
 
-   for (lp = png_ptr->row_buf + 1; i < row_bytes;
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1; i < row_bytes;
       i++, rp++, lp++, dp++)
    {
       v = *dp = (png_byte)(((int)*rp - (int)*lp) & 0xff);
@@ -2320,15 +2320,15 @@ png_setup_sub_row_only(png_structrp png_ptr, png_uint_32 bpp,
    png_bytep rp, dp, lp;
    size_t i;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_SUB;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_SUB;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1; i < bpp;
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1; i < bpp;
         i++, rp++, dp++)
    {
       *dp = *rp;
    }
 
-   for (lp = png_ptr->row_buf + 1; i < row_bytes;
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1; i < row_bytes;
       i++, rp++, lp++, dp++)
    {
       *dp = (png_byte)(((int)*rp - (int)*lp) & 0xff);
@@ -2343,10 +2343,10 @@ png_setup_up_row(png_structrp png_ptr, size_t row_bytes, size_t lmins)
    size_t sum = 0;
    unsigned int v;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_UP;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_UP;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < row_bytes;
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < row_bytes;
        i++, rp++, pp++, dp++)
    {
       v = *dp = (png_byte)(((int)*rp - (int)*pp) & 0xff);
@@ -2368,10 +2368,10 @@ png_setup_up_row_only(png_structrp png_ptr, size_t row_bytes)
    png_bytep rp, dp, pp;
    size_t i;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_UP;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_UP;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < row_bytes;
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < row_bytes;
        i++, rp++, pp++, dp++)
    {
       *dp = (png_byte)(((int)*rp - (int)*pp) & 0xff);
@@ -2387,10 +2387,10 @@ png_setup_avg_row(png_structrp png_ptr, png_uint_32 bpp,
    size_t sum = 0;
    unsigned int v;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_AVG;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_AVG;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < bpp; i++)
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < bpp; i++)
    {
       v = *dp++ = (png_byte)(((int)*rp++ - ((int)*pp++ / 2)) & 0xff);
 
@@ -2401,7 +2401,7 @@ png_setup_avg_row(png_structrp png_ptr, png_uint_32 bpp,
 #endif
    }
 
-   for (lp = png_ptr->row_buf + 1; i < row_bytes; i++)
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1; i < row_bytes; i++)
    {
       v = *dp++ = (png_byte)(((int)*rp++ - (((int)*pp++ + (int)*lp++) / 2))
           & 0xff);
@@ -2425,15 +2425,15 @@ png_setup_avg_row_only(png_structrp png_ptr, png_uint_32 bpp,
    png_bytep rp, dp, pp, lp;
    png_uint_32 i;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_AVG;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_AVG;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < bpp; i++)
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < bpp; i++)
    {
       *dp++ = (png_byte)(((int)*rp++ - ((int)*pp++ / 2)) & 0xff);
    }
 
-   for (lp = png_ptr->row_buf + 1; i < row_bytes; i++)
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1; i < row_bytes; i++)
    {
       *dp++ = (png_byte)(((int)*rp++ - (((int)*pp++ + (int)*lp++) / 2))
           & 0xff);
@@ -2449,10 +2449,10 @@ png_setup_paeth_row(png_structrp png_ptr, png_uint_32 bpp,
    size_t sum = 0;
    unsigned int v;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_PAETH;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_PAETH;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < bpp; i++)
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < bpp; i++)
    {
       v = *dp++ = (png_byte)(((int)*rp++ - (int)*pp++) & 0xff);
 
@@ -2463,7 +2463,7 @@ png_setup_paeth_row(png_structrp png_ptr, png_uint_32 bpp,
 #endif
    }
 
-   for (lp = png_ptr->row_buf + 1, cp = png_ptr->prev_row + 1; i < row_bytes;
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, cp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < row_bytes;
         i++)
    {
       int a, b, c, pa, pb, pc, p;
@@ -2508,15 +2508,15 @@ png_setup_paeth_row_only(png_structrp png_ptr, png_uint_32 bpp,
    png_bytep rp, dp, pp, cp, lp;
    size_t i;
 
-   png_ptr->try_row[0] = PNG_FILTER_VALUE_PAETH;
+   png_rust_get_try_row(png_ptr->rust_ptr)[0] = PNG_FILTER_VALUE_PAETH;
 
-   for (i = 0, rp = png_ptr->row_buf + 1, dp = png_ptr->try_row + 1,
-       pp = png_ptr->prev_row + 1; i < bpp; i++)
+   for (i = 0, rp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, dp = png_rust_get_try_row(png_ptr->rust_ptr) + 1,
+       pp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < bpp; i++)
    {
       *dp++ = (png_byte)(((int)*rp++ - (int)*pp++) & 0xff);
    }
 
-   for (lp = png_ptr->row_buf + 1, cp = png_ptr->prev_row + 1; i < row_bytes;
+   for (lp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1, cp = png_rust_get_prev_row(png_ptr->rust_ptr) + 1; i < row_bytes;
         i++)
    {
       int a, b, c, pa, pb, pc, p;
@@ -2549,7 +2549,7 @@ void /* PRIVATE */
 png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
 {
 #ifndef PNG_WRITE_FILTER_SUPPORTED
-   png_write_filtered_row(png_ptr, png_ptr->row_buf, row_info->rowbytes+1);
+   png_write_filtered_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr), row_info->rowbytes+1);
 #else
    unsigned int filter_to_do = png_rust_get_do_filter(png_ptr->rust_ptr);
    png_bytep row_buf;
@@ -2563,7 +2563,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    /* Find out how many bytes offset each pixel is */
    bpp = (row_info->pixel_depth + 7) >> 3;
 
-   row_buf = png_ptr->row_buf;
+   row_buf = png_rust_get_row_buf(png_ptr->rust_ptr);
    mins = PNG_SIZE_MAX - 256/* so we can detect potential overflow of the
                                running sum */;
 
@@ -2595,7 +2595,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    /* We don't need to test the 'no filter' case if this is the only filter
     * that has been chosen, as it doesn't actually do anything to the data.
     */
-   best_row = png_ptr->row_buf;
+   best_row = png_rust_get_row_buf(png_ptr->rust_ptr);
 
    if (PNG_SIZE_MAX/128 <= row_bytes)
    {
@@ -2635,7 +2635,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    /* It's the only filter so no testing is needed */
    {
       png_setup_sub_row_only(png_ptr, bpp, row_bytes);
-      best_row = png_ptr->try_row;
+      best_row = png_rust_get_try_row(png_ptr->rust_ptr);
    }
 
    else if ((filter_to_do & PNG_FILTER_SUB) != 0)
@@ -2648,11 +2648,11 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
       if (sum < mins)
       {
          mins = sum;
-         best_row = png_ptr->try_row;
-         if (png_ptr->tst_row != NULL)
+         best_row = png_rust_get_try_row(png_ptr->rust_ptr);
+         if (png_rust_get_tst_row(png_ptr->rust_ptr) != NULL)
          {
-            png_ptr->try_row = png_ptr->tst_row;
-            png_ptr->tst_row = best_row;
+            png_rust_set_try_row(png_ptr->rust_ptr, png_rust_get_tst_row(png_ptr->rust_ptr));
+            png_rust_set_tst_row(png_ptr->rust_ptr, best_row);
          }
       }
    }
@@ -2661,7 +2661,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    if (filter_to_do == PNG_FILTER_UP)
    {
       png_setup_up_row_only(png_ptr, row_bytes);
-      best_row = png_ptr->try_row;
+      best_row = png_rust_get_try_row(png_ptr->rust_ptr);
    }
 
    else if ((filter_to_do & PNG_FILTER_UP) != 0)
@@ -2674,11 +2674,11 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
       if (sum < mins)
       {
          mins = sum;
-         best_row = png_ptr->try_row;
-         if (png_ptr->tst_row != NULL)
+         best_row = png_rust_get_try_row(png_ptr->rust_ptr);
+         if (png_rust_get_tst_row(png_ptr->rust_ptr) != NULL)
          {
-            png_ptr->try_row = png_ptr->tst_row;
-            png_ptr->tst_row = best_row;
+            png_rust_set_try_row(png_ptr->rust_ptr, png_rust_get_tst_row(png_ptr->rust_ptr));
+            png_rust_set_tst_row(png_ptr->rust_ptr, best_row);
          }
       }
    }
@@ -2687,7 +2687,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    if (filter_to_do == PNG_FILTER_AVG)
    {
       png_setup_avg_row_only(png_ptr, bpp, row_bytes);
-      best_row = png_ptr->try_row;
+      best_row = png_rust_get_try_row(png_ptr->rust_ptr);
    }
 
    else if ((filter_to_do & PNG_FILTER_AVG) != 0)
@@ -2700,11 +2700,11 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
       if (sum < mins)
       {
          mins = sum;
-         best_row = png_ptr->try_row;
-         if (png_ptr->tst_row != NULL)
+         best_row = png_rust_get_try_row(png_ptr->rust_ptr);
+         if (png_rust_get_tst_row(png_ptr->rust_ptr) != NULL)
          {
-            png_ptr->try_row = png_ptr->tst_row;
-            png_ptr->tst_row = best_row;
+            png_rust_set_try_row(png_ptr->rust_ptr, png_rust_get_tst_row(png_ptr->rust_ptr));
+            png_rust_set_tst_row(png_ptr->rust_ptr, best_row);
          }
       }
    }
@@ -2713,7 +2713,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
    if (filter_to_do == PNG_FILTER_PAETH)
    {
       png_setup_paeth_row_only(png_ptr, bpp, row_bytes);
-      best_row = png_ptr->try_row;
+      best_row = png_rust_get_try_row(png_ptr->rust_ptr);
    }
 
    else if ((filter_to_do & PNG_FILTER_PAETH) != 0)
@@ -2725,11 +2725,11 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
 
       if (sum < mins)
       {
-         best_row = png_ptr->try_row;
-         if (png_ptr->tst_row != NULL)
+         best_row = png_rust_get_try_row(png_ptr->rust_ptr);
+         if (png_rust_get_tst_row(png_ptr->rust_ptr) != NULL)
          {
-            png_ptr->try_row = png_ptr->tst_row;
-            png_ptr->tst_row = best_row;
+            png_rust_set_try_row(png_ptr->rust_ptr, png_rust_get_tst_row(png_ptr->rust_ptr));
+            png_rust_set_tst_row(png_ptr->rust_ptr, best_row);
          }
       }
    }
@@ -2754,13 +2754,13 @@ png_write_filtered_row(png_structrp png_ptr, png_bytep filtered_row,
 
 #ifdef PNG_WRITE_FILTER_SUPPORTED
    /* Swap the current and previous rows */
-   if (png_ptr->prev_row != NULL)
+   if (png_rust_get_prev_row(png_ptr->rust_ptr) != NULL)
    {
       png_bytep tptr;
 
-      tptr = png_ptr->prev_row;
-      png_ptr->prev_row = png_ptr->row_buf;
-      png_ptr->row_buf = tptr;
+      tptr = png_rust_get_prev_row(png_ptr->rust_ptr);
+      png_rust_set_prev_row(png_ptr->rust_ptr, png_rust_get_row_buf(png_ptr->rust_ptr));
+      png_rust_set_row_buf(png_ptr->rust_ptr, tptr);
    }
 #endif /* WRITE_FILTER */
 

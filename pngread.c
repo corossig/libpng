@@ -105,7 +105,7 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
    for (;;)
    {
       png_uint_32 length = png_read_chunk_header(png_ptr);
-      png_uint_32 chunk_name = png_ptr->chunk_name;
+      png_uint_32 chunk_name = png_rust_get_chunk_name(png_ptr->rust_ptr);
 
       /* IDAT logic needs to happen here to simplify getting the two flags
        * right.
@@ -150,7 +150,7 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
 
          else if (chunk_name == png_IDAT)
          {
-            png_ptr->idat_size = 0; /* It has been consumed */
+            png_rust_set_idat_size(png_ptr->rust_ptr, 0); /* It has been consumed */
             break;
          }
       }
@@ -160,7 +160,7 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
 
       else if (chunk_name == png_IDAT)
       {
-         png_ptr->idat_size = length;
+         png_rust_set_idat_size(png_ptr->rust_ptr, length);
          break;
       }
 
@@ -387,7 +387,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
       return;
 
    png_debug2(1, "in png_read_row (row %lu, pass %d)",
-       (unsigned long)png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
+          (unsigned long)png_rust_get_row_number(png_ptr->rust_ptr), png_rust_get_pass(png_ptr->rust_ptr));
 
    /* png_read_start_row sets the information (in particular iwidth) for this
     * interlace pass.
@@ -396,7 +396,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
       png_read_start_row(png_ptr);
 
    /* 1.5.6: row_info moved out of png_struct to a local here. */
-   row_info.width = png_ptr->iwidth; /* NOTE: width of current interlaced row */
+   row_info.width = png_rust_get_iwidth(png_ptr->rust_ptr); /* NOTE: width of current interlaced row */
    row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
    row_info.bit_depth = png_rust_get_bit_depth(png_ptr->rust_ptr);
    row_info.channels = png_rust_get_channels(png_ptr->rust_ptr);
@@ -404,7 +404,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
 
 #ifdef PNG_WARNINGS_SUPPORTED
-   if (png_ptr->row_number == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
+   if (png_rust_get_row_number(png_ptr->rust_ptr) == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
    {
    /* Check for transforms that have been set but were defined out */
 #if defined(PNG_WRITE_INVERT_SUPPORTED) && !defined(PNG_READ_INVERT_SUPPORTED)
@@ -458,7 +458,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
       switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
          case 0:
-            if (png_ptr->row_number & 0x07)
+            if (png_rust_get_row_number(png_ptr->rust_ptr) & 0x07)
             {
                if (dsp_row != NULL)
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
@@ -468,7 +468,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
             break;
 
          case 1:
-            if ((png_ptr->row_number & 0x07) || png_ptr->width < 5)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x07) || png_rust_get_width(png_ptr->rust_ptr) < 5)
             {
                if (dsp_row != NULL)
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
@@ -479,9 +479,9 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
             break;
 
          case 2:
-            if ((png_ptr->row_number & 0x07) != 4)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x07) != 4)
             {
-               if (dsp_row != NULL && (png_ptr->row_number & 4))
+               if (dsp_row != NULL && (png_rust_get_row_number(png_ptr->rust_ptr) & 4))
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
 
                png_read_finish_row(png_ptr);
@@ -490,7 +490,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
             break;
 
          case 3:
-            if ((png_ptr->row_number & 3) || png_ptr->width < 3)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 3) || png_rust_get_width(png_ptr->rust_ptr) < 3)
             {
                if (dsp_row != NULL)
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
@@ -501,9 +501,9 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
             break;
 
          case 4:
-            if ((png_ptr->row_number & 3) != 2)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 3) != 2)
             {
-               if (dsp_row != NULL && (png_ptr->row_number & 2))
+               if (dsp_row != NULL && (png_rust_get_row_number(png_ptr->rust_ptr) & 2))
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
 
                png_read_finish_row(png_ptr);
@@ -512,7 +512,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
             break;
 
          case 5:
-            if ((png_ptr->row_number & 1) || png_ptr->width < 2)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 1) || png_rust_get_width(png_ptr->rust_ptr) < 2)
             {
                if (dsp_row != NULL)
                   png_combine_row(png_ptr, dsp_row, 1/*display*/);
@@ -524,7 +524,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 
          default:
          case 6:
-            if ((png_ptr->row_number & 1) == 0)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 1) == 0)
             {
                png_read_finish_row(png_ptr);
                return;
@@ -538,14 +538,14 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
       png_error(png_ptr, "Invalid attempt to read row data");
 
    /* Fill the row with IDAT data: */
-   png_ptr->row_buf[0]=255; /* to force error if no data was found */
-   png_read_IDAT_data(png_ptr, png_ptr->row_buf, row_info.rowbytes + 1);
+   png_rust_get_row_buf(png_ptr->rust_ptr)[0]=255; /* to force error if no data was found */
+   png_read_IDAT_data(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr), row_info.rowbytes + 1);
 
-   if (png_ptr->row_buf[0] > PNG_FILTER_VALUE_NONE)
+   if (png_rust_get_row_buf(png_ptr->rust_ptr)[0] > PNG_FILTER_VALUE_NONE)
    {
-      if (png_ptr->row_buf[0] < PNG_FILTER_VALUE_LAST)
-         png_read_filter_row(png_ptr, &row_info, png_ptr->row_buf + 1,
-             png_ptr->prev_row + 1, png_ptr->row_buf[0]);
+      if (png_rust_get_row_buf(png_ptr->rust_ptr)[0] < PNG_FILTER_VALUE_LAST)
+         png_read_filter_row(png_ptr, &row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
+             png_rust_get_prev_row(png_ptr->rust_ptr) + 1, png_rust_get_row_buf(png_ptr->rust_ptr)[0]);
       else
          png_error(png_ptr, "bad adaptive filter value");
    }
@@ -555,14 +555,14 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
     * it may not be in the future, so this was changed just to copy the
     * interlaced count:
     */
-   memcpy(png_ptr->prev_row, png_ptr->row_buf, row_info.rowbytes + 1);
+   memcpy(png_rust_get_prev_row(png_ptr->rust_ptr), png_rust_get_row_buf(png_ptr->rust_ptr), row_info.rowbytes + 1);
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
    if ((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
        (png_ptr->filter_type == PNG_INTRAPIXEL_DIFFERENCING))
    {
       /* Intrapixel differencing */
-      png_do_read_intrapixel(&row_info, png_ptr->row_buf + 1);
+      png_do_read_intrapixel(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
    }
 #endif
 
@@ -572,14 +572,14 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
 #endif
 
    /* The transformed pixel depth should match the depth now in row_info. */
-   if (png_ptr->transformed_pixel_depth == 0)
+   if (png_rust_get_transformed_pixel_depth(png_ptr->rust_ptr) == 0)
    {
-      png_ptr->transformed_pixel_depth = row_info.pixel_depth;
-      if (row_info.pixel_depth > png_ptr->maximum_pixel_depth)
+      png_rust_set_transformed_pixel_depth(png_ptr->rust_ptr, row_info.pixel_depth);
+      if (row_info.pixel_depth > png_rust_get_maximum_pixel_depth(png_ptr->rust_ptr))
          png_error(png_ptr, "sequential row overflow");
    }
 
-   else if (png_ptr->transformed_pixel_depth != row_info.pixel_depth)
+   else if (png_rust_get_transformed_pixel_depth(png_ptr->rust_ptr) != row_info.pixel_depth)
       png_error(png_ptr, "internal sequential row size calculation error");
 
 #ifdef PNG_READ_INTERLACING_SUPPORTED
@@ -588,7 +588,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
        png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
       if (png_rust_get_pass(png_ptr->rust_ptr) < 6)
-         png_do_read_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr),
+         png_do_read_interlace(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, png_rust_get_pass(png_ptr->rust_ptr),
              png_rust_get_transformations(png_ptr->rust_ptr));
 
       if (dsp_row != NULL)
@@ -610,7 +610,7 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    png_read_finish_row(png_ptr);
 
    if (png_ptr->read_row_fn != NULL)
-      (*(png_ptr->read_row_fn))(png_ptr, png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
+      (*(png_ptr->read_row_fn))(png_ptr, png_rust_get_row_number(png_ptr->rust_ptr), png_rust_get_pass(png_ptr->rust_ptr));
 
 }
 #endif /* SEQUENTIAL_READ */
@@ -726,7 +726,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
          png_warning(png_ptr, "Interlace handling should be turned on when "
              "using png_read_image");
          /* Make sure this is set correctly */
-         png_ptr->num_rows = png_ptr->height;
+         png_rust_set_num_rows(png_ptr->rust_ptr, png_rust_get_height(png_ptr->rust_ptr));
       }
 
       /* Obtain the pass number, which also turns on the PNG_INTERLACE flag in
@@ -742,7 +742,7 @@ png_read_image(png_structrp png_ptr, png_bytepp image)
    pass = 1;
 #endif
 
-   image_height=png_ptr->height;
+   image_height=png_rust_get_height(png_ptr->rust_ptr);
 
    for (j = 0; j < pass; j++)
    {
@@ -784,14 +784,14 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
 #ifdef PNG_READ_CHECK_FOR_INVALID_INDEX_SUPPORTED
    /* Report invalid palette index; added at libng-1.5.10 */
    if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) &&
-       png_ptr->num_palette_max > png_ptr->num_palette)
+       png_rust_get_num_palette_max(png_ptr->rust_ptr) > png_rust_get_num_palette(png_ptr->rust_ptr))
       png_benign_error(png_ptr, "Read palette index exceeding num_palette");
 #endif
 
    do
    {
       png_uint_32 length = png_read_chunk_header(png_ptr);
-      png_uint_32 chunk_name = png_ptr->chunk_name;
+      png_uint_32 chunk_name = png_rust_get_chunk_name(png_ptr->rust_ptr);
 
       if (chunk_name != png_IDAT)
          png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT);
@@ -960,8 +960,8 @@ png_read_destroy(png_structrp png_ptr)
 
    if ((png_ptr->free_me & PNG_FREE_PLTE) != 0)
    {
-      png_zfree(png_ptr, png_ptr->palette);
-      png_ptr->palette = NULL;
+      png_zfree(png_ptr, png_rust_get_palette(png_ptr->rust_ptr));
+      png_rust_set_palette(png_ptr->rust_ptr, NULL);
    }
    png_ptr->free_me &= ~PNG_FREE_PLTE;
 
@@ -1415,8 +1415,8 @@ png_image_read_header(png_voidp argument)
    png_read_info(png_ptr, info_ptr);
 
    /* Do this the fast way; just read directly out of png_struct. */
-   image->width = png_ptr->width;
-   image->height = png_ptr->height;
+   image->width = png_rust_get_width(png_ptr->rust_ptr);
+   image->height = png_rust_get_height(png_ptr->rust_ptr);
 
    {
       png_uint_32 format = png_image_format(png_ptr);
@@ -1449,7 +1449,7 @@ png_image_read_header(png_voidp argument)
             break;
 
          case PNG_COLOR_TYPE_PALETTE:
-            cmap_entries = (png_uint_32)png_ptr->num_palette;
+            cmap_entries = (png_uint_32)png_rust_get_num_palette(png_ptr->rust_ptr);
             break;
 
          default:
@@ -2806,7 +2806,7 @@ png_image_read_colormap(png_voidp argument)
          {
             unsigned int num_trans = png_rust_get_num_trans(png_ptr->rust_ptr);
             png_const_bytep trans = num_trans > 0 ? png_ptr->trans_alpha : NULL;
-            png_const_colorp colormap = png_ptr->palette;
+            png_const_colorp colormap = png_rust_get_palette(png_ptr->rust_ptr);
             int do_background = trans != NULL &&
                (output_format & PNG_FORMAT_FLAG_ALPHA) == 0;
             unsigned int i;
@@ -2817,7 +2817,7 @@ png_image_read_colormap(png_voidp argument)
 
             output_processing = PNG_CMAP_NONE;
             data_encoding = P_FILE; /* Don't change from color-map indices */
-            cmap_entries = (unsigned int)png_ptr->num_palette;
+            cmap_entries = (unsigned int)png_rust_get_num_palette(png_ptr->rust_ptr);
             if (cmap_entries > 256)
                cmap_entries = 256;
 

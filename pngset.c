@@ -618,14 +618,15 @@ png_set_PLTE(png_structrp png_ptr, png_inforp info_ptr,
     * of num_palette entries, in case of an invalid PNG file or incorrect
     * call to png_set_PLTE() with too-large sample values.
     */
-   png_ptr->palette = png_voidcast(png_colorp, png_calloc(png_ptr,
-       PNG_MAX_PALETTE_LENGTH * (sizeof (png_color))));
+   png_rust_set_palette(png_ptr->rust_ptr, png_voidcast(png_colorp, png_calloc(png_ptr,
+       PNG_MAX_PALETTE_LENGTH * (sizeof (png_color)))));
 
    if (num_palette > 0)
-      memcpy(png_ptr->palette, palette, (unsigned int)num_palette *
+      memcpy(png_rust_get_palette(png_ptr->rust_ptr), palette, (unsigned int)num_palette *
           (sizeof (png_color)));
-   info_ptr->palette = png_ptr->palette;
-   info_ptr->num_palette = png_ptr->num_palette = (png_uint_16)num_palette;
+   info_ptr->palette = png_rust_get_palette(png_ptr->rust_ptr);
+   png_rust_set_num_palette(png_ptr->rust_ptr, (png_uint_16)num_palette);
+   info_ptr->num_palette = (png_uint_16)num_palette;
 
    info_ptr->free_me |= PNG_FREE_PLTE;
 
@@ -775,7 +776,7 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
    int i;
 
    png_debug1(1, "in %lx storage function", png_ptr == NULL ? 0xabadca11U :
-      (unsigned long)png_ptr->chunk_name);
+      (unsigned long)png_rust_get_chunk_name(png_ptr->rust_ptr));
 
    if (png_ptr == NULL || info_ptr == NULL || num_text <= 0 || text_ptr == NULL)
       return(0);
@@ -1702,10 +1703,10 @@ png_set_check_for_invalid_index(png_structrp png_ptr, int allowed)
    png_debug(1, "in png_set_check_for_invalid_index");
 
    if (allowed > 0)
-      png_ptr->num_palette_max = 0;
+      png_rust_set_num_palette_max(png_ptr->rust_ptr, 0);
 
    else
-      png_ptr->num_palette_max = -1;
+      png_rust_set_num_palette_max(png_ptr->rust_ptr, -1);
 }
 #endif
 

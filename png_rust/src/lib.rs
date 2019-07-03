@@ -4,6 +4,7 @@ extern crate bitflags;
 enum PngInterlace {
     ADAM7,
 }
+type CPtr = usize;
 
 bitflags! {
     struct PngColor: u8 {
@@ -34,7 +35,7 @@ bitflags! {
         const CRC_ANCILLARY_NOWARN  = 0x200;
         const CRC_CRITICAL_USE      = 0x400;
         const CRC_CRITICAL_IGNORE   = 0x800;
-        const ASSUME_sRGB           = 0x1000;
+        const ASSUME_S_RGB          = 0x1000;
         const OPTIMIZE_ALPHA        = 0x2000;
         const DETECT_UNINITIALIZED  = 0x4000;
         /* const KEEP_UNKNOWN_CHUNKS  = 0x8000; */
@@ -60,7 +61,7 @@ bitflags! {
         /* 0x40; (unused) */
         /* 0x80; (unused) */
         const HAVE_CHUNK_HEADER      = 0x100;
-        const WROTE_tIME             = 0x200;
+        const WROTE_T_IME            = 0x200;
         const WROTE_INFO_BEFORE_PLTE = 0x400;
         const BACKGROUND_IS_GRAY     = 0x800;
         const HAVE_PNG_SIGNATURE     = 0x1000;
@@ -83,7 +84,7 @@ bitflags! {
         const COMPOSE            = 0x0080;    /* Was PNG_BACKGROUND */
         const BACKGROUND_EXPAND  = 0x0100;
         const EXPAND_16          = 0x0200;    /* Added to libpng 1.5.2 */
-        const T_16_TO_8            = 0x0400;    /* Becomes 'chop' in 1.5.4 */
+        const T_16_TO_8          = 0x0400;    /* Becomes 'chop' in 1.5.4 */
         const RGBA               = 0x0800;
         const EXPAND             = 0x1000;
         const GAMMA              = 0x2000;
@@ -99,7 +100,7 @@ bitflags! {
         const RGB_TO_GRAY        = 0x600000; /* two bits, RGB_TO_GRAY_ERR|WARN */
         const ENCODE_ALPHA       = 0x800000;
         const ADD_ALPHA          = 0x1000000;
-        const EXPAND_tRNS        = 0x2000000;
+        const EXPAND_T_RNS       = 0x2000000;
         const SCALE_16_TO_8      = 0x4000000;
                        /* 0x8000000 unused */
                        /* 0x10000000 unused */
@@ -127,9 +128,9 @@ pub struct Png {
     transformations: PngTransformations, /* which transformations to perform */
 
     pass: u8,        /* current interlace pass (0 - 6) */
-    compression: u8, /* file compression type (always 0) */
+    //compression: u8, /* file compression type (always 0) */
     interlaced: Option<PngInterlace>,
-    filter: u8,      /* file filter type (always 0) */
+    //filter: u8,      /* file filter type (always 0) */
 
     num_trans: u16,       /* number of transparency values */
     do_filter: PngFilter,        /* row filter flags (see PNG_FILTER_ in png.h ) */
@@ -138,6 +139,46 @@ pub struct Png {
     usr_bit_depth: u8,    /* bit depth of users row: write only */
     pixel_depth: u8,      /* number of bits per pixel */
     channels: u8,         /* number of channels in file */
+
+
+    width: u32,           /* width of image in pixels */
+    height: u32,          /* height of image in pixels */
+    num_rows: u32,        /* number of rows in current pass */
+    usr_width: u32,       /* width of row at start of write */
+    rowbytes: usize,      /* size of row in bytes */
+    iwidth: u32,          /* width of current interlaced row in pixels */
+    row_number: u32,      /* current row in interlace pass */
+    chunk_name: u32,      /* PNG_CHUNK() id of current chunk */
+    prev_row: CPtr,       /* buffer to save previous (unfiltered) row.
+                           * While reading this is a pointer into
+                           * big_prev_row; while writing it is separately
+                           * allocated if needed.
+                           */
+    row_buf: CPtr,        /* buffer to save current (unfiltered) row.
+                           * While reading, this is a pointer into
+                           * big_row_buf; while writing it is separately
+                           * allocated.
+                           */
+
+    try_row: CPtr,        /* buffer to save trial row when filtering */
+    tst_row: CPtr,        /* buffer to save best trial row when filtering */
+
+    info_rowbytes: usize, /* Added in 1.5.4: cache of updated row bytes */
+
+    idat_size: u32,     /* current IDAT size for read */
+    crc: u32,           /* current chunk CRC value */
+    palette: CPtr,      /* palette from the input file (array of RGB pixel) */
+    num_palette: u16,   /* number of color entries in palette */
+
+    num_palette_max: i32, /* maximum palette index found in IDAT */
+
+    usr_channels: u8,     /* channels at start of write: write only */
+
+    sig_bytes: u8,        /* magic bytes read/written from start of file */
+    maximum_pixel_depth: u8,
+                          /* pixel depth used for the row buffers */
+    transformed_pixel_depth: u8,
+                          /* pixel depth after read/write transforms */
 }
 
 impl Drop for Png {
@@ -156,9 +197,9 @@ pub extern fn png_rust_new() -> *mut Png
         flags: PngFlags::empty(),
         transformations: PngTransformations::empty(),
         pass : 0,
-        compression : 0,
+        //compression : 0,
         interlaced: None,
-        filter : 0,
+        //filter : 0,
         num_trans: 0,
         do_filter: PngFilter::empty(),
         color_type: PngColor::MASK_PALETTE,
@@ -166,25 +207,42 @@ pub extern fn png_rust_new() -> *mut Png
         usr_bit_depth: 0,
         pixel_depth: 0,
         channels: 0,
+        width: 0,
+        height: 0,
+        num_rows: 0,
+        usr_width: 0,
+        rowbytes: 0,
+        iwidth: 0,
+        row_number: 0,
+        chunk_name: 0,
+        prev_row: 0,
+        row_buf: 0,
+        try_row: 0,
+        tst_row: 0,
+        info_rowbytes: 0,
+        idat_size: 0,
+        crc: 0,
+        palette: 0,
+        num_palette: 0,
+        num_palette_max: 0,
+        usr_channels: 0,
+        sig_bytes: 0,
+        maximum_pixel_depth: 0,
+        transformed_pixel_depth: 0,
     });
     Box::into_raw(obj)
 }
 
 #[no_mangle]
-pub extern fn png_rust_free(state: *mut Png)
+pub unsafe extern fn png_rust_free(this: *mut Png)
 {
+    Box::from_raw(this);
 }
 
 #[no_mangle]
 pub unsafe extern fn png_rust_pass_is_valid(this: *const Png) -> bool
 {
     this.as_ref().unwrap().pass <= 6
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_get_pass(this: *const Png) -> u8
-{
-    this.as_ref().unwrap().pass
 }
 
 #[no_mangle]
@@ -396,76 +454,6 @@ pub unsafe extern fn png_rust_is_color_type(this: *const Png, color_type: u8) ->
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub unsafe extern fn png_rust_get_channels(this: *const Png) -> u8
-{
-    this.as_ref().unwrap().channels
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_set_channels(this: *mut Png, new_value: u8)
-{
-    this.as_mut().unwrap().channels = new_value;
-}
-
-////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
-pub unsafe extern fn png_rust_get_num_trans(this: *const Png) -> u16
-{
-    this.as_ref().unwrap().num_trans
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_set_num_trans(this: *mut Png, new_value: u16)
-{
-    this.as_mut().unwrap().num_trans = new_value;
-}
-
-////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
-pub unsafe extern fn png_rust_get_pixel_depth(this: *const Png) -> u8
-{
-    this.as_ref().unwrap().pixel_depth
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_set_pixel_depth(this: *mut Png, new_value: u8)
-{
-    this.as_mut().unwrap().pixel_depth = new_value;
-}
-
-////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
-pub unsafe extern fn png_rust_get_bit_depth(this: *const Png) -> u8
-{
-    this.as_ref().unwrap().bit_depth
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_set_bit_depth(this: *mut Png, new_value: u8)
-{
-    this.as_mut().unwrap().bit_depth = new_value;
-}
-
-////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
-pub unsafe extern fn png_rust_get_usr_bit_depth(this: *const Png) -> u8
-{
-    this.as_ref().unwrap().usr_bit_depth
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_set_usr_bit_depth(this: *mut Png, new_value: u8)
-{
-    this.as_mut().unwrap().usr_bit_depth = new_value;
-}
-
-////////////////////////////////////////////////////////////////////////
-
-#[no_mangle]
 pub unsafe extern fn png_rust_get_do_filter(this: *const Png) -> u8
 {
     this.as_ref().unwrap().do_filter.bits()
@@ -488,9 +476,68 @@ pub unsafe extern fn png_rust_is_do_filter(this: *const Png, filter: u8) -> bool
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
+pub unsafe extern fn png_rust_sub_idat_size(this: *mut Png, value: u32)
+{
+    this.as_mut().unwrap().idat_size -= value;
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_incr_row_number(this: *mut Png)
+{
+    this.as_mut().unwrap().row_number += 1;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
 pub unsafe extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u32)
 {
     let mut strip_mode_without_errors = PngFlags::from_bits_truncate(strip_mode);
     strip_mode_without_errors.remove(PngFlags::STRIP_ERROR_NUMBERS | PngFlags::STRIP_ERROR_TEXT);
     this.as_mut().unwrap().flags.remove(strip_mode_without_errors);
 }
+
+macro_rules! get_set {
+    ($field:ident, $type:ty) => (
+        paste::item! {
+            #[no_mangle]
+            pub unsafe extern fn [<png_rust_get_ $field>](this: *const Png) -> $type {
+                this.as_ref().unwrap().$field
+            }
+
+            #[no_mangle]
+            pub unsafe extern fn [<png_rust_set_ $field>](this: *mut Png, value: $type) {
+                this.as_mut().unwrap().$field = value;
+            }
+        }
+    )
+}
+
+get_set!(pass,           u8);
+get_set!(num_trans,      u16);
+get_set!(bit_depth,      u8);
+get_set!(usr_bit_depth,  u8);
+get_set!(pixel_depth,    u8);
+get_set!(channels,       u8);
+get_set!(width,          u32);
+get_set!(height,         u32);
+get_set!(num_rows,       u32);
+get_set!(usr_width,      u32);
+get_set!(rowbytes,       usize);
+get_set!(iwidth,         u32);
+get_set!(row_number,     u32);
+get_set!(chunk_name,     u32);
+get_set!(prev_row,       CPtr);
+get_set!(row_buf,        CPtr);
+get_set!(try_row,        CPtr);
+get_set!(tst_row,        CPtr);
+get_set!(info_rowbytes,  usize);
+get_set!(idat_size,      u32);
+get_set!(crc,            u32);
+get_set!(palette,        CPtr);
+get_set!(num_palette,    u16);
+get_set!(num_palette_max, i32);
+get_set!(usr_channels,   u8);
+get_set!(sig_bytes,      u8);
+get_set!(maximum_pixel_depth,     u8);
+get_set!(transformed_pixel_depth, u8);

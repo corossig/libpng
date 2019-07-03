@@ -58,7 +58,7 @@ png_set_sig_bytes(png_structrp png_ptr, int num_bytes)
    if (nb > 8)
       png_error(png_ptr, "Too many bytes for PNG signature");
 
-   png_ptr->sig_bytes = (png_byte)nb;
+   png_rust_set_sig_bytes(png_ptr->rust_ptr, (png_byte)nb);
 }
 
 /* Checks whether the supplied bytes match the PNG signature.  We allow
@@ -126,7 +126,7 @@ void /* PRIVATE */
 png_reset_crc(png_structrp png_ptr)
 {
    /* The cast is safe because the crc is a 32-bit value. */
-   png_ptr->crc = (png_uint_32)crc32(0, Z_NULL, 0);
+   png_rust_set_crc(png_ptr->rust_ptr, (png_uint_32)crc32(0, Z_NULL, 0));
 }
 
 /* Calculate the CRC over a section of data.  We can only pass as
@@ -139,7 +139,7 @@ png_calculate_crc(png_structrp png_ptr, png_const_bytep ptr, size_t length)
 {
    int need_crc = 1;
 
-   if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0)
+   if (PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr)) != 0)
    {
       if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK))
          need_crc = 0;
@@ -158,7 +158,7 @@ png_calculate_crc(png_structrp png_ptr, png_const_bytep ptr, size_t length)
     */
    if (need_crc != 0 && length > 0)
    {
-      uLong crc = png_ptr->crc; /* Should never issue a warning */
+      uLong crc = png_rust_get_crc(png_ptr->rust_ptr); /* Should never issue a warning */
 
       do
       {
@@ -180,7 +180,7 @@ png_calculate_crc(png_structrp png_ptr, png_const_bytep ptr, size_t length)
       while (length > 0);
 
       /* And the following is always safe because the crc is only 32 bits. */
-      png_ptr->crc = (png_uint_32)crc;
+      png_rust_set_crc(png_ptr->rust_ptr, (png_uint_32)crc);
    }
 }
 

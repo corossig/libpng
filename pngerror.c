@@ -42,7 +42,7 @@ png_error,(png_const_structrp png_ptr, png_const_charp error_message),
    char msg[16];
    if (png_ptr != NULL)
    {
-      if ((png_ptr->flags &
+      if ((png_rust_get_flags(png_ptr->rust_ptr) &
          (PNG_FLAG_STRIP_ERROR_NUMBERS|PNG_FLAG_STRIP_ERROR_TEXT)) != 0)
       {
          if (*error_message == PNG_LITERAL_SHARP)
@@ -53,7 +53,7 @@ png_error,(png_const_structrp png_ptr, png_const_charp error_message),
                if (error_message[offset] == ' ')
                   break;
 
-            if ((png_ptr->flags & PNG_FLAG_STRIP_ERROR_TEXT) != 0)
+            if ((png_rust_get_flags(png_ptr->rust_ptr) & PNG_FLAG_STRIP_ERROR_TEXT) != 0)
             {
                int i;
                for (i = 0; i < offset - 1; i++)
@@ -68,7 +68,7 @@ png_error,(png_const_structrp png_ptr, png_const_charp error_message),
 
          else
          {
-            if ((png_ptr->flags & PNG_FLAG_STRIP_ERROR_TEXT) != 0)
+            if ((png_rust_get_flags(png_ptr->rust_ptr) & PNG_FLAG_STRIP_ERROR_TEXT) != 0)
             {
                msg[0] = '0';
                msg[1] = '\0';
@@ -218,7 +218,7 @@ png_warning(png_const_structrp png_ptr, png_const_charp warning_message)
    if (png_ptr != NULL)
    {
 #ifdef PNG_ERROR_NUMBERS_SUPPORTED
-   if ((png_ptr->flags &
+   if ((png_rust_get_flags(png_ptr->rust_ptr) &
        (PNG_FLAG_STRIP_ERROR_NUMBERS|PNG_FLAG_STRIP_ERROR_TEXT)) != 0)
 #endif
       {
@@ -364,7 +364,7 @@ png_benign_error(png_const_structrp png_ptr, png_const_charp error_message)
    {
 #     ifdef PNG_READ_SUPPORTED
          if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
-            png_ptr->chunk_name != 0)
+            png_rust_get_chunk_name(png_ptr->rust_ptr) != 0)
             png_chunk_warning(png_ptr, error_message);
          else
 #     endif
@@ -375,7 +375,7 @@ png_benign_error(png_const_structrp png_ptr, png_const_charp error_message)
    {
 #     ifdef PNG_READ_SUPPORTED
       if (png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) &&
-            png_ptr->chunk_name != 0)
+            png_rust_get_chunk_name(png_ptr->rust_ptr) != 0)
             png_chunk_error(png_ptr, error_message);
          else
 #     endif
@@ -433,7 +433,7 @@ static void /* PRIVATE */
 png_format_buffer(png_const_structrp png_ptr, png_charp buffer, png_const_charp
     error_message)
 {
-   png_uint_32 chunk_name = png_ptr->chunk_name;
+   png_uint_32 chunk_name = png_rust_get_chunk_name(png_ptr->rust_ptr);
    int iout = 0, ishift = 24;
 
    while (ishift >= 0)

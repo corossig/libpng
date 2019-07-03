@@ -742,11 +742,11 @@ png_set_quantize(png_structrp png_ptr, png_colorp palette,
       }
       num_palette = maximum_colors;
    }
-   if (png_ptr->palette == NULL)
+   if (png_rust_get_palette(png_ptr->rust_ptr) == NULL)
    {
-      png_ptr->palette = palette;
+      png_rust_set_palette(png_ptr->rust_ptr, palette);
    }
-   png_ptr->num_palette = (png_uint_16)num_palette;
+   png_rust_set_num_palette(png_ptr->rust_ptr, (png_uint_16)num_palette);
 
    if (full_quantize != 0)
    {
@@ -1173,11 +1173,11 @@ png_init_palette_transformations(png_structrp png_ptr)
    {
       {
          png_ptr->background.red   =
-             png_ptr->palette[png_ptr->background.index].red;
+             png_rust_get_palette(png_ptr->rust_ptr)[png_ptr->background.index].red;
          png_ptr->background.green =
-             png_ptr->palette[png_ptr->background.index].green;
+             png_rust_get_palette(png_ptr->rust_ptr)[png_ptr->background.index].green;
          png_ptr->background.blue  =
-             png_ptr->palette[png_ptr->background.index].blue;
+             png_rust_get_palette(png_ptr->rust_ptr)[png_ptr->background.index].blue;
 
 #ifdef PNG_READ_INVERT_ALPHA_SUPPORTED
          if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
@@ -1602,8 +1602,8 @@ png_init_read_transformations(png_structrp png_ptr)
              * entries - see the checking code at the start of this function.
              */
             png_color back, back_1;
-            png_colorp palette = png_ptr->palette;
-            int num_palette = png_ptr->num_palette;
+            png_colorp palette = png_rust_get_palette(png_ptr->rust_ptr);
+            int num_palette = png_rust_get_num_palette(png_ptr->rust_ptr);
             int i;
             if (png_ptr->background_gamma_type == PNG_BACKGROUND_GAMMA_FILE)
             {
@@ -1819,8 +1819,8 @@ png_init_read_transformations(png_structrp png_ptr)
 #endif
          )
       {
-         png_colorp palette = png_ptr->palette;
-         int num_palette = png_ptr->num_palette;
+         png_colorp palette = png_rust_get_palette(png_ptr->rust_ptr);
+         int num_palette = png_rust_get_num_palette(png_ptr->rust_ptr);
          int i;
 
          /* NOTE: there are other transformations that should probably be in
@@ -1850,7 +1850,7 @@ png_init_read_transformations(png_structrp png_ptr)
       int i;
       int istop = (int)png_rust_get_num_trans(png_ptr->rust_ptr);
       png_color back;
-      png_colorp palette = png_ptr->palette;
+      png_colorp palette = png_rust_get_palette(png_ptr->rust_ptr);
 
       back.red   = (png_byte)png_ptr->background.red;
       back.green = (png_byte)png_ptr->background.green;
@@ -1887,7 +1887,7 @@ png_init_read_transformations(png_structrp png_ptr)
        (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
    {
       int i;
-      int istop = png_ptr->num_palette;
+      int istop = png_rust_get_num_palette(png_ptr->rust_ptr);
       int shift = 8 - png_ptr->sig_bit.red;
 
       png_rust_remove_transformations(png_ptr->rust_ptr, PNG_SHIFT);
@@ -1899,30 +1899,30 @@ png_init_read_transformations(png_structrp png_ptr)
       if (shift > 0 && shift < 8)
          for (i=0; i<istop; ++i)
          {
-            int component = png_ptr->palette[i].red;
+            int component = png_rust_get_palette(png_ptr->rust_ptr)[i].red;
 
             component >>= shift;
-            png_ptr->palette[i].red = (png_byte)component;
+            png_rust_get_palette(png_ptr->rust_ptr)[i].red = (png_byte)component;
          }
 
       shift = 8 - png_ptr->sig_bit.green;
       if (shift > 0 && shift < 8)
          for (i=0; i<istop; ++i)
          {
-            int component = png_ptr->palette[i].green;
+            int component = png_rust_get_palette(png_ptr->rust_ptr)[i].green;
 
             component >>= shift;
-            png_ptr->palette[i].green = (png_byte)component;
+            png_rust_get_palette(png_ptr->rust_ptr)[i].green = (png_byte)component;
          }
 
       shift = 8 - png_ptr->sig_bit.blue;
       if (shift > 0 && shift < 8)
          for (i=0; i<istop; ++i)
          {
-            int component = png_ptr->palette[i].blue;
+            int component = png_rust_get_palette(png_ptr->rust_ptr)[i].blue;
 
             component >>= shift;
-            png_ptr->palette[i].blue = (png_byte)component;
+            png_rust_get_palette(png_ptr->rust_ptr)[i].blue = (png_byte)component;
          }
    }
 #endif /* READ_SHIFT */
@@ -1955,7 +1955,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
          info_ptr->bit_depth = 8;
          info_ptr->num_trans = 0;
 
-         if (png_ptr->palette == NULL)
+         if (png_rust_get_palette(png_ptr->rust_ptr) == NULL)
             png_error (png_ptr, "Palette is NULL in indexed image");
       }
       else
@@ -2129,7 +2129,7 @@ defined(PNG_READ_USER_TRANSFORM_SUPPORTED)
     * the application has to either not do any transforms or get the calculation
     * right itself.
     */
-   png_ptr->info_rowbytes = info_ptr->rowbytes;
+   png_rust_set_info_rowbytes(png_ptr->rust_ptr, info_ptr->rowbytes);
 
 #ifndef PNG_READ_EXPAND_SUPPORTED
    if (png_ptr != NULL)
@@ -4737,7 +4737,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 {
    png_debug(1, "in png_do_read_transformations");
 
-   if (png_ptr->row_buf == NULL)
+   if (png_rust_get_row_buf(png_ptr->rust_ptr) == NULL)
    {
       /* Prior to 1.5.4 this output row/pass where the NULL pointer is, but this
        * error is incredibly rare and incredibly easy to debug without this
@@ -4779,19 +4779,19 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
             }
          }
 #endif
-         png_do_expand_palette(png_ptr, row_info, png_ptr->row_buf + 1,
-             png_ptr->palette, png_ptr->trans_alpha, png_rust_get_num_trans(png_ptr->rust_ptr));
+         png_do_expand_palette(png_ptr, row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
+             png_rust_get_palette(png_ptr->rust_ptr), png_ptr->trans_alpha, png_rust_get_num_trans(png_ptr->rust_ptr));
       }
 
       else
       {
          if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0 &&
              png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
-            png_do_expand(row_info, png_ptr->row_buf + 1,
+            png_do_expand(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
                 &(png_ptr->trans_color));
 
          else
-            png_do_expand(row_info, png_ptr->row_buf + 1, NULL);
+            png_do_expand(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, NULL);
       }
    }
 #endif
@@ -4801,7 +4801,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
        ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        (row_info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
        row_info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA))
-      png_do_strip_channel(row_info, png_ptr->row_buf + 1,
+      png_do_strip_channel(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
           0 /* at_start == false, because SWAP_ALPHA happens later */);
 #endif
 
@@ -4810,7 +4810,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
    {
       int rgb_error =
           png_do_rgb_to_gray(png_ptr, row_info,
-              png_ptr->row_buf + 1);
+              png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 
       if (rgb_error != 0)
       {
@@ -4866,13 +4866,13 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB) &&
        ! png_rust_has_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY))
-      png_do_gray_to_rgb(row_info, png_ptr->row_buf + 1);
+      png_do_gray_to_rgb(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) ||\
    defined(PNG_READ_ALPHA_MODE_SUPPORTED)
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
-      png_do_compose(row_info, png_ptr->row_buf + 1, png_ptr);
+      png_do_compose(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, png_ptr);
 #endif
 
 #ifdef PNG_READ_GAMMA_SUPPORTED
@@ -4894,26 +4894,26 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
        * RGB_TO_GRAY will do the transform.
        */
        (! png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
-      png_do_gamma(row_info, png_ptr->row_buf + 1, png_ptr);
+      png_do_gamma(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, png_ptr);
 #endif
 
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA | PNG_COMPOSE) &&
        (row_info->color_type == PNG_COLOR_TYPE_RGB_ALPHA ||
        row_info->color_type == PNG_COLOR_TYPE_GRAY_ALPHA))
-      png_do_strip_channel(row_info, png_ptr->row_buf + 1,
+      png_do_strip_channel(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
           0 /* at_start == false, because SWAP_ALPHA happens later */);
 #endif
 
 #ifdef PNG_READ_ALPHA_MODE_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA) &&
        (row_info->color_type & PNG_COLOR_MASK_ALPHA) != 0)
-      png_do_encode_alpha(row_info, png_ptr->row_buf + 1, png_ptr);
+      png_do_encode_alpha(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, png_ptr);
 #endif
 
 #ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8))
-      png_do_scale_16_to_8(row_info, png_ptr->row_buf + 1);
+      png_do_scale_16_to_8(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_STRIP_16_TO_8_SUPPORTED
@@ -4922,13 +4922,13 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     * calling the API or in a TRANSFORM flag) this is what happens.
     */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_16_TO_8))
-      png_do_chop(row_info, png_ptr->row_buf + 1);
+      png_do_chop(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_QUANTIZE))
    {
-      png_do_quantize(row_info, png_ptr->row_buf + 1,
+      png_do_quantize(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
           png_ptr->palette_lookup, png_ptr->quantize_index);
 
       if (row_info->rowbytes == 0)
@@ -4943,69 +4943,69 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
     * better accuracy results faster!)
     */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16))
-      png_do_expand_16(row_info, png_ptr->row_buf + 1);
+      png_do_expand_16(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_GRAY_TO_RGB_SUPPORTED
    /* NOTE: moved here in 1.5.4 (from much later in this list.) */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB) &&
        png_rust_has_mode(png_ptr->rust_ptr, PNG_BACKGROUND_IS_GRAY))
-      png_do_gray_to_rgb(row_info, png_ptr->row_buf + 1);
+      png_do_gray_to_rgb(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_INVERT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
-      png_do_invert(row_info, png_ptr->row_buf + 1);
+      png_do_invert(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_INVERT_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
-      png_do_read_invert_alpha(row_info, png_ptr->row_buf + 1);
+      png_do_read_invert_alpha(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_SHIFT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
-      png_do_unshift(row_info, png_ptr->row_buf + 1,
+      png_do_unshift(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
           &(png_ptr->shift));
 #endif
 
 #ifdef PNG_READ_PACK_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
-      png_do_unpack(row_info, png_ptr->row_buf + 1);
+      png_do_unpack(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_CHECK_FOR_INVALID_INDEX_SUPPORTED
    /* Added at libpng-1.5.10 */
    if (row_info->color_type == PNG_COLOR_TYPE_PALETTE &&
-       png_ptr->num_palette_max >= 0)
+       png_rust_get_num_palette_max(png_ptr->rust_ptr) >= 0)
       png_do_check_palette_indexes(png_ptr, row_info);
 #endif
 
 #ifdef PNG_READ_BGR_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
-      png_do_bgr(row_info, png_ptr->row_buf + 1);
+      png_do_bgr(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_PACKSWAP_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
-      png_do_packswap(row_info, png_ptr->row_buf + 1);
+      png_do_packswap(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_FILLER_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
-      png_do_read_filler(row_info, png_ptr->row_buf + 1,
+      png_do_read_filler(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
                          (png_uint_32)png_ptr->filler, png_rust_get_flags(png_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_READ_SWAP_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA))
-      png_do_read_swap_alpha(row_info, png_ptr->row_buf + 1);
+      png_do_read_swap_alpha(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_READ_16BIT_SUPPORTED
 #ifdef PNG_READ_SWAP_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
-      png_do_swap(row_info, png_ptr->row_buf + 1);
+      png_do_swap(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 #endif
 
@@ -5022,7 +5022,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
                 /*  png_byte bit_depth;      bit depth of samples */
                 /*  png_byte channels;       number of channels (1-4) */
                 /*  png_byte pixel_depth;    bits per pixel (depth*channels) */
-             png_ptr->row_buf + 1);    /* start of pixel data for row */
+             png_rust_get_row_buf(png_ptr->rust_ptr) + 1);    /* start of pixel data for row */
 #ifdef PNG_USER_TRANSFORM_PTR_SUPPORTED
       if (png_ptr->user_transform_depth != 0)
          row_info->bit_depth = png_ptr->user_transform_depth;

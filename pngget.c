@@ -1051,7 +1051,7 @@ png_get_text(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr != NULL && info_ptr != NULL && info_ptr->num_text > 0)
    {
       png_debug1(1, "in 0x%lx retrieval function",
-         (unsigned long)png_ptr->chunk_name);
+         (unsigned long)png_rust_get_chunk_name(png_ptr->rust_ptr));
 
       if (text_ptr != NULL)
          *text_ptr = info_ptr->text;
@@ -1228,7 +1228,7 @@ png_get_io_state (png_const_structrp png_ptr)
 png_uint_32 PNGAPI
 png_get_io_chunk_type (png_const_structrp png_ptr)
 {
-   return png_ptr->chunk_name;
+   return png_rust_get_chunk_name(png_ptr->rust_ptr);
 }
 #endif /* IO_STATE */
 
@@ -1238,7 +1238,7 @@ int PNGAPI
 png_get_palette_max(png_const_structp png_ptr, png_const_infop info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return png_ptr->num_palette_max;
+      return png_rust_get_num_palette_max(png_ptr->rust_ptr);
 
    return (-1);
 }

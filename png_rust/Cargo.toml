@@ -12,3 +12,4 @@ crate-type = ["staticlib", "rlib"]
 [dependencies]
 crc = "1.8.1"
 bitflags = "1.1.0"
+paste = "0.1"

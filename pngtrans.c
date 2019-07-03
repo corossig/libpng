@@ -154,13 +154,13 @@ png_set_filler(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
          switch (png_rust_get_color_type(png_ptr->rust_ptr))
          {
             case PNG_COLOR_TYPE_RGB:
-               png_ptr->usr_channels = 4;
+               png_rust_set_usr_channels(png_ptr->rust_ptr, 4);
                break;
 
             case PNG_COLOR_TYPE_GRAY:
                if (png_rust_get_bit_depth(png_ptr->rust_ptr) >= 8)
                {
-                  png_ptr->usr_channels = 2;
+                  png_rust_set_usr_channels(png_ptr->rust_ptr, 2);
                   break;
                }
 
@@ -697,8 +697,8 @@ png_do_bgr(png_row_infop row_info, png_bytep row)
 void /* PRIVATE */
 png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
 {
-   if (png_ptr->num_palette < (1 << row_info->bit_depth) &&
-      png_ptr->num_palette > 0) /* num_palette can be 0 in MNG files */
+   if (png_rust_get_num_palette(png_ptr->rust_ptr) < (1 << row_info->bit_depth) &&
+      png_rust_get_num_palette(png_ptr->rust_ptr) > 0) /* num_palette can be 0 in MNG files */
    {
       /* Calculations moved outside switch in an attempt to stop different
        * compiler warnings.  'padding' is in *bits* within the last byte, it is
@@ -707,7 +707,7 @@ png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
        * forms produced on either GCC or MSVC.
        */
       int padding = PNG_PADBITS(row_info->pixel_depth, row_info->width);
-      png_bytep rp = png_ptr->row_buf + row_info->rowbytes - 1;
+      png_bytep rp = png_rust_get_row_buf(png_ptr->rust_ptr) + row_info->rowbytes - 1;
 
       switch (row_info->bit_depth)
       {
@@ -716,10 +716,10 @@ png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
             /* in this case, all bytes must be 0 so we don't need
              * to unpack the pixels except for the rightmost one.
              */
-            for (; rp > png_ptr->row_buf; rp--)
+            for (; rp > png_rust_get_row_buf(png_ptr->rust_ptr); rp--)
             {
               if ((*rp >> padding) != 0)
-                 png_ptr->num_palette_max = 1;
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, 1);
               padding = 0;
             }
 
@@ -728,27 +728,27 @@ png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
 
          case 2:
          {
-            for (; rp > png_ptr->row_buf; rp--)
+            for (; rp > png_rust_get_row_buf(png_ptr->rust_ptr); rp--)
             {
               int i = ((*rp >> padding) & 0x03);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               i = (((*rp >> padding) >> 2) & 0x03);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               i = (((*rp >> padding) >> 4) & 0x03);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               i = (((*rp >> padding) >> 6) & 0x03);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               padding = 0;
             }
@@ -758,17 +758,17 @@ png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
 
          case 4:
          {
-            for (; rp > png_ptr->row_buf; rp--)
+            for (; rp > png_rust_get_row_buf(png_ptr->rust_ptr); rp--)
             {
               int i = ((*rp >> padding) & 0x0f);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               i = (((*rp >> padding) >> 4) & 0x0f);
 
-              if (i > png_ptr->num_palette_max)
-                 png_ptr->num_palette_max = i;
+              if (i > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                 png_rust_set_num_palette_max(png_ptr->rust_ptr, i);
 
               padding = 0;
             }
@@ -778,10 +778,10 @@ png_do_check_palette_indexes(png_structrp png_ptr, png_row_infop row_info)
 
          case 8:
          {
-            for (; rp > png_ptr->row_buf; rp--)
+            for (; rp > png_rust_get_row_buf(png_ptr->rust_ptr); rp--)
             {
-               if (*rp > png_ptr->num_palette_max)
-                  png_ptr->num_palette_max = (int) *rp;
+               if (*rp > png_rust_get_num_palette_max(png_ptr->rust_ptr))
+                  png_rust_set_num_palette_max(png_ptr->rust_ptr, (int) *rp);
             }
 
             break;
@@ -846,7 +846,7 @@ png_get_current_row_number(png_const_structrp png_ptr)
     * interlaced image.
     */
    if (png_ptr != NULL)
-      return png_ptr->row_number;
+      return png_rust_get_row_number(png_ptr->rust_ptr);
 
    return PNG_UINT_32_MAX; /* help the app not to fail silently */
 }

@@ -122,10 +122,10 @@ png_read_sig(png_structrp png_ptr, png_inforp info_ptr)
    size_t num_checked, num_to_check;
 
    /* Exit if the user application does not expect a signature. */
-   if (png_ptr->sig_bytes >= 8)
+   if (png_rust_get_sig_bytes(png_ptr->rust_ptr) >= 8)
       return;
 
-   num_checked = png_ptr->sig_bytes;
+   num_checked = png_rust_get_sig_bytes(png_ptr->rust_ptr);
    num_to_check = 8 - num_checked;
 
 #ifdef PNG_IO_STATE_SUPPORTED
@@ -134,7 +134,7 @@ png_read_sig(png_structrp png_ptr, png_inforp info_ptr)
 
    /* The signature must be serialized in a single I/O call. */
    png_read_data(png_ptr, &(info_ptr->signature[num_checked]), num_to_check);
-   png_ptr->sig_bytes = 8;
+   png_rust_set_sig_bytes(png_ptr->rust_ptr, 8);
 
    if (png_sig_cmp(info_ptr->signature, num_checked, num_to_check) != 0)
    {
@@ -168,17 +168,17 @@ png_read_chunk_header(png_structrp png_ptr)
    length = png_get_uint_31(png_ptr, buf);
 
    /* Put the chunk name into png_ptr->chunk_name. */
-   png_ptr->chunk_name = PNG_CHUNK_FROM_STRING(buf+4);
+   png_rust_set_chunk_name(png_ptr->rust_ptr, PNG_CHUNK_FROM_STRING(buf+4));
 
    png_debug2(0, "Reading %lx chunk, length = %lu",
-       (unsigned long)png_ptr->chunk_name, (unsigned long)length);
+       (unsigned long)png_rust_get_chunk_name(png_ptr->rust_ptr), (unsigned long)length);
 
    /* Reset the crc and run it over the chunk name. */
    png_reset_crc(png_ptr);
    png_calculate_crc(png_ptr, buf + 4, 4);
 
    /* Check to see if chunk name is valid. */
-   png_check_chunk_name(png_ptr, png_ptr->chunk_name);
+   png_check_chunk_name(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr));
 
    /* Check for too-large chunk length */
    png_check_chunk_length(png_ptr, length);
@@ -227,7 +227,7 @@ png_crc_finish(png_structrp png_ptr, png_uint_32 skip)
 
    if (png_crc_error(png_ptr) != 0)
    {
-      if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0 ?
+      if (PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr)) != 0 ?
           ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_NOWARN) :
           png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_CRITICAL_USE))
       {
@@ -253,7 +253,7 @@ png_crc_error(png_structrp png_ptr)
    png_uint_32 crc;
    int need_crc = 1;
 
-   if (PNG_CHUNK_ANCILLARY(png_ptr->chunk_name) != 0)
+   if (PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr)) != 0)
    {
       if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_CRC_ANCILLARY_MASK))
          need_crc = 0;
@@ -275,7 +275,7 @@ png_crc_error(png_structrp png_ptr)
    if (need_crc != 0)
    {
       crc = png_get_uint_32(crc_bytes);
-      return ((int)(crc != png_ptr->crc));
+      return ((int)(crc != png_rust_get_crc(png_ptr->rust_ptr)));
    }
 
    else
@@ -638,13 +638,13 @@ png_decompress_chunk(png_structrp png_ptr,
          *newlength = limit;
 
       /* Now try to claim the stream. */
-      ret = png_inflate_claim(png_ptr, png_ptr->chunk_name);
+      ret = png_inflate_claim(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr));
 
       if (ret == Z_OK)
       {
          png_uint_32 lzsize = chunklength - prefix_size;
 
-         ret = png_inflate(png_ptr, png_ptr->chunk_name, 1/*finish*/,
+         ret = png_inflate(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr), 1/*finish*/,
              /* input: */ png_ptr->read_buffer + prefix_size, &lzsize,
              /* output: */ NULL, newlength);
 
@@ -674,7 +674,7 @@ png_decompress_chunk(png_structrp png_ptr,
                {
                   memset(text, 0, buffer_size);
 
-                  ret = png_inflate(png_ptr, png_ptr->chunk_name, 1/*finish*/,
+                  ret = png_inflate(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr), 1/*finish*/,
                       png_ptr->read_buffer + prefix_size, &lzsize,
                       text + prefix_size, newlength);
 
@@ -773,7 +773,7 @@ png_inflate_read(png_structrp png_ptr, png_bytep read_buffer, uInt read_size,
     png_uint_32p chunk_bytes, png_bytep next_out, png_alloc_size_t *out_size,
     int finish)
 {
-   if (png_ptr->zowner == png_ptr->chunk_name)
+   if (png_ptr->zowner == png_rust_get_chunk_name(png_ptr->rust_ptr))
    {
       int ret;
 
@@ -864,8 +864,8 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    interlace_type = buf[12];
 
    /* Set internal variables */
-   png_ptr->width = width;
-   png_ptr->height = height;
+   png_rust_set_width(png_ptr->rust_ptr, width);
+   png_rust_set_height(png_ptr->rust_ptr, height);
    png_rust_set_bit_depth(png_ptr->rust_ptr, (png_byte)bit_depth);
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
    png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
@@ -898,10 +898,10 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    /* Set up other useful info */
    png_rust_set_pixel_depth(png_ptr->rust_ptr, (png_byte)(png_rust_get_bit_depth(png_ptr->rust_ptr) * png_rust_get_channels(png_ptr->rust_ptr)));
-   png_ptr->rowbytes = PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_ptr->width);
+   png_rust_set_rowbytes(png_ptr->rust_ptr, PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_rust_get_width(png_ptr->rust_ptr)));
    png_debug1(3, "bit_depth = %d", png_rust_get_bit_depth(png_ptr->rust_ptr));
    png_debug1(3, "channels = %d", png_rust_get_channels(png_ptr->rust_ptr));
-   png_debug1(3, "rowbytes = %lu", (unsigned long)png_ptr->rowbytes);
+   png_debug1(3, "rowbytes = %lu", (unsigned long)png_rust_get_rowbytes(png_ptr->rust_ptr));
    png_set_IHDR(png_ptr, info_ptr, width, height, bit_depth,
        color_type, interlace_type, compression_type, filter_type);
 }
@@ -1879,7 +1879,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
          return;
       }
 
-      if (length > (unsigned int) png_ptr->num_palette ||
+      if (length > (unsigned int) png_rust_get_num_palette(png_ptr->rust_ptr) ||
          length > (unsigned int) PNG_MAX_PALETTE_LENGTH ||
          length == 0)
       {
@@ -1981,9 +1981,9 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
             return;
          }
 
-         background.red = (png_uint_16)png_ptr->palette[buf[0]].red;
-         background.green = (png_uint_16)png_ptr->palette[buf[0]].green;
-         background.blue = (png_uint_16)png_ptr->palette[buf[0]].blue;
+         background.red = (png_uint_16)png_rust_get_palette(png_ptr->rust_ptr)[buf[0]].red;
+         background.green = (png_uint_16)png_rust_get_palette(png_ptr->rust_ptr)[buf[0]].green;
+         background.blue = (png_uint_16)png_rust_get_palette(png_ptr->rust_ptr)[buf[0]].blue;
       }
 
       else
@@ -2124,7 +2124,7 @@ png_handle_hIST(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    num = length / 2 ;
 
-   if (num != (unsigned int) png_ptr->num_palette ||
+   if (num != (unsigned int) png_rust_get_num_palette(png_ptr->rust_ptr) ||
        num > (unsigned int) PNG_MAX_PALETTE_LENGTH)
    {
       png_crc_finish(png_ptr, length);
@@ -2880,7 +2880,7 @@ png_cache_unknown_chunk(png_structrp png_ptr, png_uint_32 length)
 
    if (length <= limit)
    {
-      PNG_CSTRING_FROM_CHUNK(png_ptr->unknown_chunk.name, png_ptr->chunk_name);
+      PNG_CSTRING_FROM_CHUNK(png_ptr->unknown_chunk.name, png_rust_get_chunk_name(png_ptr->rust_ptr));
       /* The following is safe because of the PNG_SIZE_MAX init above */
       png_ptr->unknown_chunk.size = (size_t)length/*SAFE*/;
       /* 'mode' is a flag array, only the bottom four bits matter here */
@@ -2938,7 +2938,7 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
     */
 #  ifndef PNG_HANDLE_AS_UNKNOWN_SUPPORTED
 #     ifdef PNG_SET_UNKNOWN_CHUNKS_SUPPORTED
-   keep = png_chunk_unknown_handling(png_ptr, png_ptr->chunk_name);
+   keep = png_chunk_unknown_handling(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr));
 #     endif
 #  endif
 
@@ -3027,7 +3027,7 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
 
       if (keep == PNG_HANDLE_CHUNK_ALWAYS ||
          (keep == PNG_HANDLE_CHUNK_IF_SAFE &&
-          PNG_CHUNK_ANCILLARY(png_ptr->chunk_name)))
+          PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr))))
       {
          if (png_cache_unknown_chunk(png_ptr, length) == 0)
             keep = PNG_HANDLE_CHUNK_NEVER;
@@ -3061,7 +3061,7 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
     */
    if (keep == PNG_HANDLE_CHUNK_ALWAYS ||
       (keep == PNG_HANDLE_CHUNK_IF_SAFE &&
-       PNG_CHUNK_ANCILLARY(png_ptr->chunk_name)))
+       PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr))))
    {
 #     ifdef PNG_USER_LIMITS_SUPPORTED
       switch (png_ptr->user_chunk_cache_max)
@@ -3112,7 +3112,7 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
 #endif /* !READ_UNKNOWN_CHUNKS */
 
    /* Check for unhandled critical chunks */
-   if (handled == 0 && PNG_CHUNK_CRITICAL(png_ptr->chunk_name))
+   if (handled == 0 && PNG_CHUNK_CRITICAL(png_rust_get_chunk_name(png_ptr->rust_ptr)))
       png_chunk_error(png_ptr, "unhandled critical chunk");
 }
 
@@ -3160,19 +3160,19 @@ png_check_chunk_length(png_const_structrp png_ptr, png_uint_32 length)
    if (PNG_USER_CHUNK_MALLOC_MAX < limit)
       limit = PNG_USER_CHUNK_MALLOC_MAX;
 # endif
-   if (png_ptr->chunk_name == png_IDAT)
+   if (png_rust_get_chunk_name(png_ptr->rust_ptr) == png_IDAT)
    {
       png_alloc_size_t idat_limit = PNG_UINT_31_MAX;
       size_t row_factor =
-         (size_t)png_ptr->width
+         (size_t)png_rust_get_width(png_ptr->rust_ptr)
          * (size_t)png_rust_get_channels(png_ptr->rust_ptr)
          * (png_rust_get_bit_depth(png_ptr->rust_ptr) > 8? 2: 1)
          + 1
          + (png_rust_get_interlace(png_ptr->rust_ptr)? 6: 0);
-      if (png_ptr->height > PNG_UINT_32_MAX/row_factor)
+      if (png_rust_get_height(png_ptr->rust_ptr) > PNG_UINT_32_MAX/row_factor)
          idat_limit = PNG_UINT_31_MAX;
       else
-         idat_limit = png_ptr->height * row_factor;
+         idat_limit = png_rust_get_height(png_ptr->rust_ptr) * row_factor;
       row_factor = row_factor > 32566? 32566 : row_factor;
       idat_limit += 6 + 5*(idat_limit/row_factor+1); /* zlib+deflate overhead */
       idat_limit=idat_limit < PNG_UINT_31_MAX? idat_limit : PNG_UINT_31_MAX;
@@ -3197,9 +3197,9 @@ png_check_chunk_length(png_const_structrp png_ptr, png_uint_32 length)
 void /* PRIVATE */
 png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
 {
-   unsigned int pixel_depth = png_ptr->transformed_pixel_depth;
-   png_const_bytep sp = png_ptr->row_buf + 1;
-   png_alloc_size_t row_width = png_ptr->width;
+   unsigned int pixel_depth = png_rust_get_transformed_pixel_depth(png_ptr->rust_ptr);
+   png_const_bytep sp = png_rust_get_row_buf(png_ptr->rust_ptr) + 1;
+   png_alloc_size_t row_width = png_rust_get_width(png_ptr->rust_ptr);
    unsigned int pass = png_rust_get_pass(png_ptr->rust_ptr);
    png_bytep end_ptr = 0;
    png_byte end_byte = 0;
@@ -3217,7 +3217,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
     * any call to png_read_update_info at this point.  Do not continue if we got
     * this wrong.
     */
-   if (png_ptr->info_rowbytes != 0 && png_ptr->info_rowbytes !=
+   if (png_rust_get_info_rowbytes(png_ptr->rust_ptr) != 0 && png_rust_get_info_rowbytes(png_ptr->rust_ptr) !=
           PNG_ROWBYTES(pixel_depth, row_width))
       png_error(png_ptr, "internal row size calculation error");
 
@@ -4164,22 +4164,22 @@ png_read_IDAT_data(png_structrp png_ptr, png_bytep output,
          uInt avail_in;
          png_bytep buffer;
 
-         while (png_ptr->idat_size == 0)
+         while (png_rust_get_idat_size(png_ptr->rust_ptr) == 0)
          {
             png_crc_finish(png_ptr, 0);
 
-            png_ptr->idat_size = png_read_chunk_header(png_ptr);
+            png_rust_set_idat_size(png_ptr->rust_ptr, png_read_chunk_header(png_ptr));
             /* This is an error even in the 'check' case because the code just
              * consumed a non-IDAT header.
              */
-            if (png_ptr->chunk_name != png_IDAT)
+            if (png_rust_get_chunk_name(png_ptr->rust_ptr) != png_IDAT)
                png_error(png_ptr, "Not enough image data");
          }
 
          avail_in = png_ptr->IDAT_read_size;
 
-         if (avail_in > png_ptr->idat_size)
-            avail_in = (uInt)png_ptr->idat_size;
+         if (avail_in > png_rust_get_idat_size(png_ptr->rust_ptr))
+            avail_in = (uInt)png_rust_get_idat_size(png_ptr->rust_ptr);
 
          /* A PNG with a gradually increasing IDAT size will defeat this attempt
           * to minimize memory usage by causing lots of re-allocs, but
@@ -4189,7 +4189,7 @@ png_read_IDAT_data(png_structrp png_ptr, png_bytep output,
          buffer = png_read_buffer(png_ptr, avail_in, 0/*error*/);
 
          png_crc_read(png_ptr, buffer, avail_in);
-         png_ptr->idat_size -= avail_in;
+         png_rust_sub_idat_size(png_ptr->rust_ptr, avail_in);
 
          png_ptr->zstream.next_in = buffer;
          png_ptr->zstream.avail_in = avail_in;
@@ -4239,7 +4239,7 @@ png_read_IDAT_data(png_structrp png_ptr, png_bytep output,
          png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
          png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
 
-         if (png_ptr->zstream.avail_in > 0 || png_ptr->idat_size > 0)
+         if (png_ptr->zstream.avail_in > 0 || png_rust_get_idat_size(png_ptr->rust_ptr) > 0)
             png_chunk_benign_error(png_ptr, "Extra compressed data");
          break;
       }
@@ -4316,7 +4316,7 @@ png_read_finish_IDAT(png_structrp png_ptr)
        * crc_finish here.  If idat_size is non-zero we also need to read the
        * spurious bytes at the end of the chunk now.
        */
-      (void)png_crc_finish(png_ptr, png_ptr->idat_size);
+      (void)png_crc_finish(png_ptr, png_rust_get_idat_size(png_ptr->rust_ptr));
    }
 }
 
@@ -4338,18 +4338,18 @@ png_read_finish_row(png_structrp png_ptr)
    static const png_byte png_pass_yinc[7] = {8, 8, 8, 4, 4, 2, 2};
 
    png_debug(1, "in png_read_finish_row");
-   png_ptr->row_number++;
-   if (png_ptr->row_number < png_ptr->num_rows)
+   png_rust_incr_row_number(png_ptr->rust_ptr);
+   if (png_rust_get_row_number(png_ptr->rust_ptr) < png_rust_get_num_rows(png_ptr->rust_ptr))
       return;
 
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
-      png_ptr->row_number = 0;
+      png_rust_set_row_number(png_ptr->rust_ptr, 0);
 
       /* TO DO: don't do this if prev_row isn't needed (requires
        * read-ahead of the next row's filter byte.
        */
-      memset(png_ptr->prev_row, 0, png_ptr->rowbytes + 1);
+      memset(png_rust_get_prev_row(png_ptr->rust_ptr), 0, png_rust_get_rowbytes(png_ptr->rust_ptr) + 1);
 
       do
       {
@@ -4358,23 +4358,23 @@ png_read_finish_row(png_structrp png_ptr)
          if ( ! png_rust_pass_is_valid(png_ptr->rust_ptr))
             break;
 
-         png_ptr->iwidth = (png_ptr->width +
+         png_rust_set_iwidth(png_ptr->rust_ptr, (png_rust_get_width(png_ptr->rust_ptr) +
             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
             png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
-            png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
+            png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)]);
 
          if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
          {
-            png_ptr->num_rows = (png_ptr->height +
+            png_rust_set_num_rows(png_ptr->rust_ptr, (png_rust_get_height(png_ptr->rust_ptr) +
                 png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
                 png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
-                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)];
+                png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)]);
          }
 
          else  /* if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE) */
             break; /* libpng deinterlacing sees every row */
 
-      } while (png_ptr->num_rows == 0 || png_ptr->iwidth == 0);
+      } while (png_rust_get_num_rows(png_ptr->rust_ptr) == 0 || png_rust_get_iwidth(png_ptr->rust_ptr) == 0);
 
       if (png_rust_pass_is_valid(png_ptr->rust_ptr))
          return;
@@ -4413,22 +4413,22 @@ png_read_start_row(png_structrp png_ptr)
    if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
    {
       if ( ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
-         png_ptr->num_rows = (png_ptr->height + png_pass_yinc[0] - 1 -
-             png_pass_ystart[0]) / png_pass_yinc[0];
+         png_rust_set_num_rows(png_ptr->rust_ptr, (png_rust_get_height(png_ptr->rust_ptr) + png_pass_yinc[0] - 1 -
+                               png_pass_ystart[0]) / png_pass_yinc[0]);
 
       else
-         png_ptr->num_rows = png_ptr->height;
+         png_rust_set_num_rows(png_ptr->rust_ptr, png_rust_get_height(png_ptr->rust_ptr));
 
-      png_ptr->iwidth = (png_ptr->width +
+      png_rust_set_iwidth(png_ptr->rust_ptr, (png_rust_get_width(png_ptr->rust_ptr) +
           png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
           png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
-          png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)];
+         png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)]);
    }
 
    else
    {
-      png_ptr->num_rows = png_ptr->height;
-      png_ptr->iwidth = png_ptr->width;
+      png_rust_set_num_rows(png_ptr->rust_ptr, png_rust_get_height(png_ptr->rust_ptr));
+      png_rust_set_iwidth(png_ptr->rust_ptr, png_rust_get_width(png_ptr->rust_ptr));
    }
 
    max_pixel_depth = (unsigned int)png_rust_get_pixel_depth(png_ptr->rust_ptr);
@@ -4577,13 +4577,13 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
    /* This value is stored in png_struct and double checked in the row read
     * code.
     */
-   png_ptr->maximum_pixel_depth = (png_byte)max_pixel_depth;
-   png_ptr->transformed_pixel_depth = 0; /* calculated on demand */
+   png_rust_set_maximum_pixel_depth(png_ptr->rust_ptr, (png_byte)max_pixel_depth);
+   png_rust_set_transformed_pixel_depth(png_ptr->rust_ptr, 0); /* calculated on demand */
 
    /* Align the width on the next larger 8 pixels.  Mainly used
     * for interlacing
     */
-   row_bytes = ((png_ptr->width + 7) & ~((png_uint_32)7));
+   row_bytes = ((png_rust_get_width(png_ptr->rust_ptr) + 7) & ~((png_uint_32)7));
    /* Calculate the maximum bytes needed, adding a byte and a pixel
     * for safety's sake
     */
@@ -4620,38 +4620,38 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
       {
          png_bytep temp = png_ptr->big_row_buf + 32;
          int extra = (int)((temp - (png_bytep)0) & 0x0f);
-         png_ptr->row_buf = temp - extra - 1/*filter byte*/;
+         png_rust_set_row_buf(png_ptr->rust_ptr, temp - extra - 1/*filter byte*/);
 
          temp = png_ptr->big_prev_row + 32;
          extra = (int)((temp - (png_bytep)0) & 0x0f);
-         png_ptr->prev_row = temp - extra - 1/*filter byte*/;
+         png_rust_set_prev_row(png_ptr->rust_ptr, temp - extra - 1/*filter byte*/);
       }
 
 #else
       /* Use 31 bytes of padding before and 17 bytes after row_buf. */
-      png_ptr->row_buf = png_ptr->big_row_buf + 31;
-      png_ptr->prev_row = png_ptr->big_prev_row + 31;
+      png_rust_set_row_buf(png_ptr->rust_ptr, png_ptr->big_row_buf + 31);
+      png_rust_set_prev_row(png_ptr->rust_ptr, png_ptr->big_prev_row + 31);
 #endif
       png_ptr->old_big_row_buf_size = row_bytes + 48;
    }
 
 #ifdef PNG_MAX_MALLOC_64K
-   if (png_ptr->rowbytes > 65535)
+   if (png_rust_get_rowbytes(png_ptr->rust_ptr) > 65535)
       png_error(png_ptr, "This image requires a row greater than 64KB");
 
 #endif
-   if (png_ptr->rowbytes > (PNG_SIZE_MAX - 1))
+   if (png_rust_get_rowbytes(png_ptr->rust_ptr) > (PNG_SIZE_MAX - 1))
       png_error(png_ptr, "Row has too many bytes to allocate in memory");
 
-   memset(png_ptr->prev_row, 0, png_ptr->rowbytes + 1);
+   memset(png_rust_get_prev_row(png_ptr->rust_ptr), 0, png_rust_get_rowbytes(png_ptr->rust_ptr) + 1);
 
-   png_debug1(3, "width = %u,", png_ptr->width);
-   png_debug1(3, "height = %u,", png_ptr->height);
-   png_debug1(3, "iwidth = %u,", png_ptr->iwidth);
-   png_debug1(3, "num_rows = %u,", png_ptr->num_rows);
-   png_debug1(3, "rowbytes = %lu,", (unsigned long)png_ptr->rowbytes);
+   png_debug1(3, "width = %u,", png_rust_get_width(png_ptr->rust_ptr));
+   png_debug1(3, "height = %u,", png_rust_get_height(png_ptr->rust_ptr));
+   png_debug1(3, "iwidth = %u,", png_rust_get_iwidth(png_ptr->rust_ptr));
+   png_debug1(3, "num_rows = %u,", png_rust_get_num_rows(png_ptr->rust_ptr));
+   png_debug1(3, "rowbytes = %lu,", (unsigned long)png_rust_get_rowbytes(png_ptr->rust_ptr));
    png_debug1(3, "irowbytes = %lu",
-       (unsigned long)PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_ptr->iwidth) + 1);
+       (unsigned long)PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_rust_get_iwidth(png_ptr->rust_ptr)) + 1);
 
    /* The sequential reader needs a buffer for IDAT, but the progressive reader
     * does not, so free the read buffer now regardless; the sequential reader

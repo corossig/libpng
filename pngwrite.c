@@ -365,7 +365,7 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
       png_error(png_ptr, "No IDATs written into file");
 
 #ifdef PNG_WRITE_CHECK_FOR_INVALID_INDEX_SUPPORTED
-   if (png_ptr->num_palette_max > png_ptr->num_palette)
+   if (png_rust_get_num_palette_max(png_ptr->rust_ptr) > png_rust_get_num_palette(png_ptr->rust_ptr))
       png_benign_error(png_ptr, "Wrote palette index exceeding num_palette");
 #endif
 
@@ -620,7 +620,7 @@ png_write_image(png_structrp png_ptr, png_bytepp image)
    for (pass = 0; pass < num_pass; pass++)
    {
       /* Loop through image */
-      for (i = 0, rp = image; i < png_ptr->height; i++, rp++)
+      for (i = 0, rp = image; i < png_rust_get_height(png_ptr->rust_ptr); i++, rp++)
       {
          png_write_row(png_ptr, *rp);
       }
@@ -703,10 +703,10 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
       return;
 
    png_debug2(1, "in png_write_row (row %u, pass %d)",
-       png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
+       png_rust_get_row_number(png_ptr->rust_ptr), png_rust_get_pass(png_ptr->rust_ptr));
 
    /* Initialize transformations and other stuff if first time */
-   if (png_ptr->row_number == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
+   if (png_rust_get_row_number(png_ptr->rust_ptr) == 0 && png_rust_get_pass(png_ptr->rust_ptr) == 0)
    {
       /* Make sure we wrote the header info */
       if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_INFO_BEFORE_PLTE) )
@@ -761,7 +761,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
       switch (png_rust_get_pass(png_ptr->rust_ptr))
       {
          case 0:
-            if ((png_ptr->row_number & 0x07) != 0)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x07) != 0)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -769,7 +769,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 1:
-            if ((png_ptr->row_number & 0x07) != 0 || png_ptr->width < 5)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x07) != 0 || png_rust_get_width(png_ptr->rust_ptr) < 5)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -777,7 +777,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 2:
-            if ((png_ptr->row_number & 0x07) != 4)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x07) != 4)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -785,7 +785,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 3:
-            if ((png_ptr->row_number & 0x03) != 0 || png_ptr->width < 3)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x03) != 0 || png_rust_get_width(png_ptr->rust_ptr) < 3)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -793,7 +793,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 4:
-            if ((png_ptr->row_number & 0x03) != 2)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x03) != 2)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -801,7 +801,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 5:
-            if ((png_ptr->row_number & 0x01) != 0 || png_ptr->width < 2)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x01) != 0 || png_rust_get_width(png_ptr->rust_ptr) < 2)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -809,7 +809,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
             break;
 
          case 6:
-            if ((png_ptr->row_number & 0x01) == 0)
+            if ((png_rust_get_row_number(png_ptr->rust_ptr) & 0x01) == 0)
             {
                png_write_finish_row(png_ptr);
                return;
@@ -824,8 +824,8 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 
    /* Set up row info for transformations */
    row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
-   row_info.width = png_ptr->usr_width;
-   row_info.channels = png_ptr->usr_channels;
+   row_info.width = png_rust_get_usr_width(png_ptr->rust_ptr);
+   row_info.channels = png_rust_get_usr_channels(png_ptr->rust_ptr);
    row_info.bit_depth = png_rust_get_usr_bit_depth(png_ptr->rust_ptr);
    row_info.pixel_depth = (png_byte)(row_info.bit_depth * row_info.channels);
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
@@ -838,14 +838,14 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    png_debug1(3, "row_info->rowbytes = %lu", (unsigned long)row_info.rowbytes);
 
    /* Copy user's row into buffer, leaving room for filter byte. */
-   memcpy(png_ptr->row_buf + 1, row, row_info.rowbytes);
+   memcpy(png_rust_get_row_buf(png_ptr->rust_ptr) + 1, row, row_info.rowbytes);
 
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
    /* Handle interlacing */
    if (png_rust_get_interlace(png_ptr->rust_ptr) && png_rust_get_pass(png_ptr->rust_ptr) < 6 &&
        png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
    {
-      png_do_write_interlace(&row_info, png_ptr->row_buf + 1, png_rust_get_pass(png_ptr->rust_ptr));
+      png_do_write_interlace(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1, png_rust_get_pass(png_ptr->rust_ptr));
       /* This should always get caught above, but still ... */
       if (row_info.width == 0)
       {
@@ -865,7 +865,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
     * which is also the output depth.
     */
    if (row_info.pixel_depth != png_rust_get_pixel_depth(png_ptr->rust_ptr) ||
-       row_info.pixel_depth != png_ptr->transformed_pixel_depth)
+       row_info.pixel_depth != png_rust_get_transformed_pixel_depth(png_ptr->rust_ptr))
       png_error(png_ptr, "internal write transform logic error");
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
@@ -882,7 +882,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
        (png_ptr->filter_type == PNG_INTRAPIXEL_DIFFERENCING))
    {
       /* Intrapixel differencing */
-      png_do_write_intrapixel(&row_info, png_ptr->row_buf + 1);
+      png_do_write_intrapixel(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
    }
 #endif
 
@@ -890,7 +890,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
 #ifdef PNG_WRITE_CHECK_FOR_INVALID_INDEX_SUPPORTED
    /* Check for out-of-range palette index */
    if (row_info.color_type == PNG_COLOR_TYPE_PALETTE &&
-       png_ptr->num_palette_max >= 0)
+       png_rust_get_num_palette_max(png_ptr->rust_ptr) >= 0)
       png_do_check_palette_indexes(png_ptr, &row_info);
 #endif
 
@@ -898,7 +898,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    png_write_find_filter(png_ptr, &row_info);
 
    if (png_ptr->write_row_fn != NULL)
-      (*(png_ptr->write_row_fn))(png_ptr, png_ptr->row_number, png_rust_get_pass(png_ptr->rust_ptr));
+      (*(png_ptr->write_row_fn))(png_ptr, png_rust_get_row_number(png_ptr->rust_ptr), png_rust_get_pass(png_ptr->rust_ptr));
 }
 
 #ifdef PNG_WRITE_FLUSH_SUPPORTED
@@ -924,7 +924,7 @@ png_write_flush(png_structrp png_ptr)
       return;
 
    /* We have already written out all of the data */
-   if (png_ptr->row_number >= png_ptr->num_rows)
+   if (png_rust_get_row_number(png_ptr->rust_ptr) >= png_rust_get_num_rows(png_ptr->rust_ptr))
       return;
 
    png_compress_IDAT(png_ptr, NULL, 0, Z_SYNC_FLUSH);
@@ -945,15 +945,15 @@ png_write_destroy(png_structrp png_ptr)
 
    /* Free our memory.  png_free checks NULL for us. */
    png_free_buffer_list(png_ptr, &png_ptr->zbuffer_list);
-   png_free(png_ptr, png_ptr->row_buf);
-   png_ptr->row_buf = NULL;
+   png_free(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr));
+   png_rust_set_row_buf(png_ptr->rust_ptr, NULL);
 #ifdef PNG_WRITE_FILTER_SUPPORTED
-   png_free(png_ptr, png_ptr->prev_row);
-   png_free(png_ptr, png_ptr->try_row);
-   png_free(png_ptr, png_ptr->tst_row);
-   png_ptr->prev_row = NULL;
-   png_ptr->try_row = NULL;
-   png_ptr->tst_row = NULL;
+   png_free(png_ptr, png_rust_get_prev_row(png_ptr->rust_ptr));
+   png_free(png_ptr, png_rust_get_try_row(png_ptr->rust_ptr));
+   png_free(png_ptr, png_rust_get_tst_row(png_ptr->rust_ptr));
+   png_rust_set_prev_row(png_ptr->rust_ptr, NULL);
+   png_rust_set_try_row(png_ptr->rust_ptr, NULL);
+   png_rust_set_tst_row(png_ptr->rust_ptr, NULL);
 #endif
 
 #ifdef PNG_SET_UNKNOWN_CHUNKS_SUPPORTED
@@ -1057,7 +1057,7 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
        * prev_row buffer must be maintained even if there are currently no
        * 'prev_row' requiring filters active.
        */
-      if (png_ptr->row_buf != NULL)
+      if (png_rust_get_row_buf(png_ptr->rust_ptr) != NULL)
       {
          int num_filters;
          png_alloc_size_t buf_size;
@@ -1066,14 +1066,14 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
           * images cannot benefit from certain filters.  If this isn't done here
           * the check below will fire on 1 pixel high images.
           */
-         if (png_ptr->height == 1)
+         if (png_rust_get_height(png_ptr->rust_ptr) == 1)
             filters &= ~(PNG_FILTER_UP|PNG_FILTER_AVG|PNG_FILTER_PAETH);
 
-         if (png_ptr->width == 1)
+         if (png_rust_get_width(png_ptr->rust_ptr) == 1)
             filters &= ~(PNG_FILTER_SUB|PNG_FILTER_AVG|PNG_FILTER_PAETH);
 
          if ((filters & (PNG_FILTER_UP|PNG_FILTER_AVG|PNG_FILTER_PAETH)) != 0
-            && png_ptr->prev_row == NULL)
+            && png_rust_get_prev_row(png_ptr->rust_ptr) == NULL)
          {
             /* This is the error case, however it is benign - the previous row
              * is not available so the filter can't be used.  Just warn here.
@@ -1100,18 +1100,18 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
          /* Allocate needed row buffers if they have not already been
           * allocated.
           */
-         buf_size = PNG_ROWBYTES(png_ptr->usr_channels * png_rust_get_usr_bit_depth(png_ptr->rust_ptr),
-             png_ptr->width) + 1;
+         buf_size = PNG_ROWBYTES(png_rust_get_usr_channels(png_ptr->rust_ptr) * png_rust_get_usr_bit_depth(png_ptr->rust_ptr),
+             png_rust_get_width(png_ptr->rust_ptr)) + 1;
 
-         if (png_ptr->try_row == NULL)
-            png_ptr->try_row = png_voidcast(png_bytep,
-                png_malloc(png_ptr, buf_size));
+         if (png_rust_get_try_row(png_ptr->rust_ptr) == NULL)
+            png_rust_set_try_row(png_ptr->rust_ptr, png_voidcast(png_bytep,
+                png_malloc(png_ptr, buf_size)));
 
          if (num_filters > 1)
          {
-            if (png_ptr->tst_row == NULL)
-               png_ptr->tst_row = png_voidcast(png_bytep,
-                   png_malloc(png_ptr, buf_size));
+            if (png_rust_get_tst_row(png_ptr->rust_ptr) == NULL)
+               png_rust_set_tst_row(png_ptr->rust_ptr, png_voidcast(png_bytep,
+                   png_malloc(png_ptr, buf_size)));
          }
       }
       png_rust_set_do_filter(png_ptr->rust_ptr, (png_byte)filters);

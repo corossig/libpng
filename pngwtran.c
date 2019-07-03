@@ -517,57 +517,57 @@ png_do_write_transformations(png_structrp png_ptr, png_row_infop row_info)
                 /*  png_byte bit_depth;      bit depth of samples */
                 /*  png_byte channels;       number of channels (1-4) */
                 /*  png_byte pixel_depth;    bits per pixel (depth*channels) */
-             png_ptr->row_buf + 1);      /* start of pixel data for row */
+             png_rust_get_row_buf(png_ptr->rust_ptr) + 1);      /* start of pixel data for row */
 #endif
 
 #ifdef PNG_WRITE_FILLER_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
-      png_do_strip_channel(row_info, png_ptr->row_buf + 1,
+      png_do_strip_channel(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
                            ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_FILLER_AFTER));
 #endif
 
 #ifdef PNG_WRITE_PACKSWAP_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACKSWAP))
-      png_do_packswap(row_info, png_ptr->row_buf + 1);
+      png_do_packswap(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_WRITE_PACK_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
-      png_do_pack(row_info, png_ptr->row_buf + 1,
+      png_do_pack(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
           (png_uint_32)png_rust_get_bit_depth(png_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_SWAP_SUPPORTED
 #  ifdef PNG_16BIT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES))
-      png_do_swap(row_info, png_ptr->row_buf + 1);
+      png_do_swap(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #  endif
 #endif
 
 #ifdef PNG_WRITE_SHIFT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SHIFT))
-      png_do_shift(row_info, png_ptr->row_buf + 1,
+      png_do_shift(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
            &(png_ptr->shift));
 #endif
 
 #ifdef PNG_WRITE_SWAP_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SWAP_ALPHA))
-      png_do_write_swap_alpha(row_info, png_ptr->row_buf + 1);
+      png_do_write_swap_alpha(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_WRITE_INVERT_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA))
-      png_do_write_invert_alpha(row_info, png_ptr->row_buf + 1);
+      png_do_write_invert_alpha(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_WRITE_BGR_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_BGR))
-      png_do_bgr(row_info, png_ptr->row_buf + 1);
+      png_do_bgr(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 
 #ifdef PNG_WRITE_INVERT_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_MONO))
-      png_do_invert(row_info, png_ptr->row_buf + 1);
+      png_do_invert(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
 #endif
 }
 #endif /* WRITE_TRANSFORMS */
