@@ -534,7 +534,7 @@ png_do_write_transformations(png_structrp png_ptr, png_row_infop row_info)
 #ifdef PNG_WRITE_PACK_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK))
       png_do_pack(row_info, png_ptr->row_buf + 1,
-          (png_uint_32)png_ptr->bit_depth);
+          (png_uint_32)png_rust_get_bit_depth(png_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_SWAP_SUPPORTED

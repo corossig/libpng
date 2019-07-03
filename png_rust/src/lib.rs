@@ -109,6 +109,17 @@ bitflags! {
 }
 
 
+bitflags! {
+    struct PngFilter: u8 {
+        const NONE            = 0x08;
+        const SUB             = 0x10;
+        const UP              = 0x20;
+        const AVG             = 0x40;
+        const PAETH           = 0x80;
+        const FAST_FILTERS    = (0x08 | 0x10 | 0x20);
+    }
+}
+
 
 pub struct Png {
     mode: PngMode,        /* tells us where we are in the PNG file */
@@ -121,7 +132,7 @@ pub struct Png {
     filter: u8,      /* file filter type (always 0) */
 
     num_trans: u16,       /* number of transparency values */
-    do_filter: u8,        /* row filter flags (see PNG_FILTER_ in png.h ) */
+    do_filter: PngFilter,        /* row filter flags (see PNG_FILTER_ in png.h ) */
     color_type: PngColor, /* color type of file */
     bit_depth: u8,        /* bit depth of file */
     usr_bit_depth: u8,    /* bit depth of users row: write only */
@@ -149,7 +160,7 @@ pub extern fn png_rust_new() -> *mut Png
         interlaced: None,
         filter : 0,
         num_trans: 0,
-        do_filter: 0,
+        do_filter: PngFilter::empty(),
         color_type: PngColor::MASK_PALETTE,
         bit_depth: 0,
         usr_bit_depth: 0,
@@ -165,46 +176,33 @@ pub extern fn png_rust_free(state: *mut Png)
 }
 
 #[no_mangle]
-pub extern fn png_rust_pass_is_valid(this: *const Png) -> bool
+pub unsafe extern fn png_rust_pass_is_valid(this: *const Png) -> bool
 {
-    unsafe {
-        (*this).pass <= 6
-    }
+    this.as_ref().unwrap().pass <= 6
 }
 
 #[no_mangle]
-pub extern fn png_rust_get_pass(this: *const Png) -> u8
+pub unsafe extern fn png_rust_get_pass(this: *const Png) -> u8
 {
-    unsafe {
-        (*this).pass
-    }
+    this.as_ref().unwrap().pass
 }
 
 #[no_mangle]
-pub extern fn png_rust_incr_pass(this: *mut Png)
+pub unsafe extern fn png_rust_incr_pass(this: *mut Png)
 {
-    unsafe {
-        (*this).pass += 1;
-    }
+    this.as_mut().unwrap().pass += 1;
 }
 
 #[no_mangle]
-pub extern fn png_rust_decr_pass(this: *mut Png)
+pub unsafe extern fn png_rust_decr_pass(this: *mut Png)
 {
-    unsafe {
-        (*this).pass -= 1;
-    }
+    this.as_mut().unwrap().pass -= 1;
 }
 
 #[no_mangle]
-pub extern fn png_rust_get_interlace(this: *const Png) -> i32
+pub unsafe extern fn png_rust_get_interlace(this: *const Png) -> i32
 {
-    let interlace;
-    unsafe {
-        interlace = &(*this).interlaced;
-    }
-
-    match interlace {
+    match &this.as_ref().unwrap().interlaced {
         Some(interlace) => {
             match interlace {
                 PngInterlace::ADAM7 => 1,
@@ -215,7 +213,7 @@ pub extern fn png_rust_get_interlace(this: *const Png) -> i32
 }
 
 #[no_mangle]
-pub extern fn png_rust_set_interlace(this: *mut Png, value: i32)
+pub unsafe extern fn png_rust_set_interlace(this: *mut Png, value: i32)
 {
     let interlace = match value {
         0 => None,
@@ -226,250 +224,273 @@ pub extern fn png_rust_set_interlace(this: *mut Png, value: i32)
         }
     };
 
-    unsafe {
-        (*this).interlaced = interlace;
-    }
+    this.as_mut().unwrap().interlaced = interlace;
 }
 
 
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub extern fn png_rust_get_flags(this: *const Png) -> u32
+pub unsafe extern fn png_rust_get_flags(this: *const Png) -> u32
 {
-    unsafe {
-        (*this).flags.bits()
-    }
+    this.as_ref().unwrap().flags.bits()
 }
 
 #[no_mangle]
-pub extern fn png_rust_has_flags(this: *const Png, flags: u32) -> bool
+pub unsafe extern fn png_rust_has_flags(this: *const Png, flags: u32) -> bool
 {
     let flags = PngFlags::from_bits_truncate(flags);
-    unsafe {
-        (*this).flags.contains(flags)
-    }
+    this.as_ref().unwrap().flags.contains(flags)
 }
 
 #[no_mangle]
-pub extern fn png_rust_one_of_flags(this: *const Png, flags: u32) -> bool
+pub unsafe extern fn png_rust_one_of_flags(this: *const Png, flags: u32) -> bool
 {
     let flags = PngFlags::from_bits_truncate(flags);
-    unsafe {
-        (*this).flags.intersects(flags)
-    }
+    this.as_ref().unwrap().flags.intersects(flags)
 }
 
 #[no_mangle]
-pub extern fn png_rust_add_flags(this: *mut Png, new_flags: u32)
+pub unsafe extern fn png_rust_add_flags(this: *mut Png, new_flags: u32)
 {
-    let flags;
-    unsafe {
-        flags = &mut (*this).flags;
-    }
-
     let new_flags = PngFlags::from_bits_truncate(new_flags);
-    flags.insert(new_flags);
+    this.as_mut().unwrap().flags.insert(new_flags);
 }
 
 #[no_mangle]
-pub extern fn png_rust_remove_flags(this: *mut Png, new_flags: u32)
+pub unsafe extern fn png_rust_remove_flags(this: *mut Png, new_flags: u32)
 {
-    let flags;
-    unsafe {
-        flags = &mut (*this).flags;
-    }
-
     let new_flags = PngFlags::from_bits_truncate(new_flags);
-    flags.remove(new_flags);
+    this.as_mut().unwrap().flags.remove(new_flags);
 }
 
 #[no_mangle]
-pub extern fn png_rust_reset_flags(this: *mut Png)
+pub unsafe extern fn png_rust_reset_flags(this: *mut Png)
 {
-    unsafe {
-        (*this).flags = PngFlags::empty();
-    }
+    this.as_mut().unwrap().flags = PngFlags::empty();
 }
 
 
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub extern fn png_rust_get_mode(this: *const Png) -> u32
+pub unsafe extern fn png_rust_get_mode(this: *const Png) -> u32
 {
-    unsafe {
-        (*this).mode.bits()
-    }
+    this.as_ref().unwrap().mode.bits()
 }
 
 #[no_mangle]
-pub extern fn png_rust_set_mode(this: *mut Png, new_mode: u32)
+pub unsafe extern fn png_rust_set_mode(this: *mut Png, new_mode: u32)
 {
     let new_mode = PngMode::from_bits_truncate(new_mode);
-    unsafe {
-        (*this).mode = new_mode;
-    }
+    this.as_mut().unwrap().mode = new_mode;
 }
 
 #[no_mangle]
-pub extern fn png_rust_has_mode(this: *const Png, mode: u32) -> bool
+pub unsafe extern fn png_rust_has_mode(this: *const Png, mode: u32) -> bool
 {
     let mode = PngMode::from_bits_truncate(mode);
-    unsafe {
-        (*this).mode.contains(mode)
-    }
+    this.as_ref().unwrap().mode.contains(mode)
 }
 
 #[no_mangle]
-pub extern fn png_rust_add_mode(this: *mut Png, new_mode: u32)
+pub unsafe extern fn png_rust_add_mode(this: *mut Png, new_mode: u32)
 {
-    let mode;
-    unsafe {
-        mode = &mut (*this).mode;
-    }
-
     let new_mode = PngMode::from_bits_truncate(new_mode);
-    mode.insert(new_mode);
+    this.as_mut().unwrap().mode.insert(new_mode);
 }
 
 #[no_mangle]
-pub extern fn png_rust_remove_mode(this: *mut Png, new_mode: u32)
+pub unsafe extern fn png_rust_remove_mode(this: *mut Png, new_mode: u32)
 {
-    let mode;
-    unsafe {
-        mode = &mut (*this).mode;
-    }
-
     let new_mode = PngMode::from_bits_truncate(new_mode);
-    mode.remove(new_mode);
+    this.as_mut().unwrap().mode.remove(new_mode);
 }
 
 #[no_mangle]
-pub extern fn png_rust_reset_mode(this: *mut Png)
+pub unsafe extern fn png_rust_reset_mode(this: *mut Png)
 {
-    unsafe {
-        (*this).mode = PngMode::empty();
-    }
+    this.as_mut().unwrap().mode = PngMode::empty();
 }
 
 
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub extern fn png_rust_get_transformations(this: *const Png) -> u32
+pub unsafe extern fn png_rust_get_transformations(this: *const Png) -> u32
 {
-    unsafe {
-        (*this).transformations.bits()
-    }
+    this.as_ref().unwrap().transformations.bits()
 }
 
 #[no_mangle]
-pub extern fn png_rust_has_transformations(this: *const Png, transformations: u32) -> bool
+pub unsafe extern fn png_rust_has_transformations(this: *const Png, transformations: u32) -> bool
 {
     let transformations = PngTransformations::from_bits_truncate(transformations);
-    unsafe {
-        (*this).transformations.contains(transformations)
-    }
+    this.as_ref().unwrap().transformations.contains(transformations)
 }
 
 #[no_mangle]
-pub extern fn png_rust_one_of_transformations(this: *const Png, transformations: u32) -> bool
+pub unsafe extern fn png_rust_one_of_transformations(this: *const Png, transformations: u32) -> bool
 {
     let transformations = PngTransformations::from_bits_truncate(transformations);
-    unsafe {
-        (*this).transformations.intersects(transformations)
-    }
+    this.as_ref().unwrap().transformations.intersects(transformations)
 }
 
 #[no_mangle]
-pub extern fn png_rust_empty_transformations(this: *const Png) -> bool
+pub unsafe extern fn png_rust_empty_transformations(this: *const Png) -> bool
 {
-    unsafe {
-        (*this).transformations.is_empty()
-    }
+    this.as_ref().unwrap().transformations.is_empty()
 }
 
 #[no_mangle]
-pub extern fn png_rust_add_transformations(this: *mut Png, new_transformations: u32)
+pub unsafe extern fn png_rust_add_transformations(this: *mut Png, new_transformations: u32)
 {
-    let transformations;
-    unsafe {
-        transformations = &mut (*this).transformations;
-    }
-
     let new_transformations = PngTransformations::from_bits_truncate(new_transformations);
-    transformations.insert(new_transformations);
+    this.as_mut().unwrap().transformations.insert(new_transformations);
 }
 
 #[no_mangle]
-pub extern fn png_rust_remove_transformations(this: *mut Png, new_transformations: u32)
+pub unsafe extern fn png_rust_remove_transformations(this: *mut Png, new_transformations: u32)
 {
-    let transformations;
-    unsafe {
-        transformations = &mut (*this).transformations;
-    }
-
     let new_transformations = PngTransformations::from_bits_truncate(new_transformations);
-    transformations.remove(new_transformations);
+    this.as_mut().unwrap().transformations.remove(new_transformations);
 }
 
 #[no_mangle]
-pub extern fn png_rust_reset_transformations(this: *mut Png)
+pub unsafe extern fn png_rust_reset_transformations(this: *mut Png)
 {
-    unsafe {
-        (*this).transformations = PngTransformations::empty();
-    }
+    this.as_mut().unwrap().transformations = PngTransformations::empty();
 }
 
 
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
-pub extern fn png_rust_get_color_type(this: *const Png) -> u8
+pub unsafe extern fn png_rust_get_color_type(this: *const Png) -> u8
 {
-    unsafe {
-        (*this).color_type.bits()
-    }
+    this.as_ref().unwrap().color_type.bits()
 }
 
 #[no_mangle]
-pub extern fn png_rust_set_color_type(this: *mut Png, color_type: u8)
+pub unsafe extern fn png_rust_set_color_type(this: *mut Png, color_type: u8)
 {
     let color_type = PngColor::from_bits_truncate(color_type);
-    unsafe {
-        (*this).color_type = color_type;
-    }
+    this.as_mut().unwrap().color_type = color_type;
 }
 
 #[no_mangle]
-pub extern fn png_rust_has_color_type(this: *const Png, color_type: u8) -> bool
+pub unsafe extern fn png_rust_has_color_type(this: *const Png, color_type: u8) -> bool
 {
     let color_type = PngColor::from_bits_truncate(color_type);
-    unsafe {
-        (*this).color_type.contains(color_type)
-    }
+    this.as_ref().unwrap().color_type.contains(color_type)
 }
 
 #[no_mangle]
-pub extern fn png_rust_is_color_type(this: *const Png, color_type: u8) -> bool
+pub unsafe extern fn png_rust_is_color_type(this: *const Png, color_type: u8) -> bool
 {
     let color_type = PngColor::from_bits_truncate(color_type);
-    unsafe {
-        (*this).color_type.bits == color_type.bits()
-    }
+    this.as_ref().unwrap().color_type.bits == color_type.bits()
 }
 
 
-#[no_mangle]
-pub extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u32)
-{
-    let flags;
-    unsafe {
-        flags = &mut (*this).flags;
-    }
+////////////////////////////////////////////////////////////////////////
 
+#[no_mangle]
+pub unsafe extern fn png_rust_get_channels(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().channels
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_channels(this: *mut Png, new_value: u8)
+{
+    this.as_mut().unwrap().channels = new_value;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_num_trans(this: *const Png) -> u16
+{
+    this.as_ref().unwrap().num_trans
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_num_trans(this: *mut Png, new_value: u16)
+{
+    this.as_mut().unwrap().num_trans = new_value;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_pixel_depth(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().pixel_depth
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_pixel_depth(this: *mut Png, new_value: u8)
+{
+    this.as_mut().unwrap().pixel_depth = new_value;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_bit_depth(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().bit_depth
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_bit_depth(this: *mut Png, new_value: u8)
+{
+    this.as_mut().unwrap().bit_depth = new_value;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_usr_bit_depth(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().usr_bit_depth
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_usr_bit_depth(this: *mut Png, new_value: u8)
+{
+    this.as_mut().unwrap().usr_bit_depth = new_value;
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_do_filter(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().do_filter.bits()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_do_filter(this: *mut Png, filter: u8)
+{
+    let filter = PngFilter::from_bits_truncate(filter);
+    this.as_mut().unwrap().do_filter = filter
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_is_do_filter(this: *const Png, filter: u8) -> bool
+{
+    let filter = PngFilter::from_bits_truncate(filter);
+    this.as_ref().unwrap().do_filter.bits() == filter.bits()
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u32)
+{
     let mut strip_mode_without_errors = PngFlags::from_bits_truncate(strip_mode);
     strip_mode_without_errors.remove(PngFlags::STRIP_ERROR_NUMBERS | PngFlags::STRIP_ERROR_TEXT);
-    flags.remove(strip_mode_without_errors);
+    this.as_mut().unwrap().flags.remove(strip_mode_without_errors);
 }

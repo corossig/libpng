@@ -1,4 +1,3 @@
-
 /* palette_neon_intrinsics.c - NEON optimised palette expansion functions
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -27,7 +26,7 @@ png_riffle_palette_neon(png_structrp png_ptr)
    png_const_colorp palette = png_ptr->palette;
    png_bytep riffled_palette = png_ptr->riffled_palette;
    png_const_bytep trans_alpha = png_ptr->trans_alpha;
-   int num_trans = png_ptr->num_trans;
+   int num_trans = png_rust_get_num_trans(png_ptr->rust_ptr);
    int i;
 
    /* Initially black, opaque. */

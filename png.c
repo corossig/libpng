@@ -3947,7 +3947,7 @@ png_uint_16 /* PRIVATE */
 png_gamma_correct(png_structrp png_ptr, unsigned int value,
     png_fixed_point gamma_val)
 {
-   if (png_ptr->bit_depth == 8)
+   if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 8)
       return png_gamma_8bit_correct(value, gamma_val);
 
 #ifdef PNG_16BIT_SUPPORTED

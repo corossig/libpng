@@ -866,7 +866,7 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    /* Set internal variables */
    png_ptr->width = width;
    png_ptr->height = height;
-   png_ptr->bit_depth = (png_byte)bit_depth;
+   png_rust_set_bit_depth(png_ptr->rust_ptr, (png_byte)bit_depth);
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
    png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
@@ -880,27 +880,27 @@ png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       default: /* invalid, png_set_IHDR calls png_error */
       case PNG_COLOR_TYPE_GRAY:
       case PNG_COLOR_TYPE_PALETTE:
-         png_ptr->channels = 1;
+         png_rust_set_channels(png_ptr->rust_ptr, 1);
          break;
 
       case PNG_COLOR_TYPE_RGB:
-         png_ptr->channels = 3;
+         png_rust_set_channels(png_ptr->rust_ptr, 3);
          break;
 
       case PNG_COLOR_TYPE_GRAY_ALPHA:
-         png_ptr->channels = 2;
+         png_rust_set_channels(png_ptr->rust_ptr, 2);
          break;
 
       case PNG_COLOR_TYPE_RGB_ALPHA:
-         png_ptr->channels = 4;
+         png_rust_set_channels(png_ptr->rust_ptr, 4);
          break;
    }
 
    /* Set up other useful info */
-   png_ptr->pixel_depth = (png_byte)(png_ptr->bit_depth * png_ptr->channels);
-   png_ptr->rowbytes = PNG_ROWBYTES(png_ptr->pixel_depth, png_ptr->width);
-   png_debug1(3, "bit_depth = %d", png_ptr->bit_depth);
-   png_debug1(3, "channels = %d", png_ptr->channels);
+   png_rust_set_pixel_depth(png_ptr->rust_ptr, (png_byte)(png_rust_get_bit_depth(png_ptr->rust_ptr) * png_rust_get_channels(png_ptr->rust_ptr)));
+   png_ptr->rowbytes = PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_ptr->width);
+   png_debug1(3, "bit_depth = %d", png_rust_get_bit_depth(png_ptr->rust_ptr));
+   png_debug1(3, "channels = %d", png_rust_get_channels(png_ptr->rust_ptr));
    png_debug1(3, "rowbytes = %lu", (unsigned long)png_ptr->rowbytes);
    png_set_IHDR(png_ptr, info_ptr, width, height, bit_depth,
        color_type, interlace_type, compression_type, filter_type);
@@ -978,7 +978,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * here.
     */
    if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
-      max_palette_length = (1 << png_ptr->bit_depth);
+      max_palette_length = (1 << png_rust_get_bit_depth(png_ptr->rust_ptr));
    else
       max_palette_length = PNG_MAX_PALETTE_LENGTH;
 
@@ -1067,14 +1067,14 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * maintainers to ignore it.
     */
 #ifdef PNG_READ_tRNS_SUPPORTED
-   if (png_ptr->num_trans > 0 ||
+   if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0 ||
        (info_ptr != NULL && (info_ptr->valid & PNG_INFO_tRNS) != 0))
    {
       /* Cancel this because otherwise it would be used if the transforms
        * require it.  Don't cancel the 'valid' flag because this would prevent
        * detection of duplicate chunks.
        */
-      png_ptr->num_trans = 0;
+      png_rust_set_num_trans(png_ptr->rust_ptr, 0);
 
       if (info_ptr != NULL)
          info_ptr->num_trans = 0;
@@ -1186,8 +1186,8 @@ png_handle_sBIT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    else
    {
-      truelen = png_ptr->channels;
-      sample_depth = png_ptr->bit_depth;
+      truelen = png_rust_get_channels(png_ptr->rust_ptr);
+      sample_depth = png_rust_get_bit_depth(png_ptr->rust_ptr);
    }
 
    if (length != truelen || length > 4)
@@ -1847,7 +1847,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       }
 
       png_crc_read(png_ptr, buf, 2);
-      png_ptr->num_trans = 1;
+      png_rust_set_num_trans(png_ptr->rust_ptr, 1);
       png_ptr->trans_color.gray = png_get_uint_16(buf);
    }
 
@@ -1863,7 +1863,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       }
 
       png_crc_read(png_ptr, buf, length);
-      png_ptr->num_trans = 1;
+      png_rust_set_num_trans(png_ptr->rust_ptr, 1);
       png_ptr->trans_color.red = png_get_uint_16(buf);
       png_ptr->trans_color.green = png_get_uint_16(buf + 2);
       png_ptr->trans_color.blue = png_get_uint_16(buf + 4);
@@ -1889,7 +1889,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       }
 
       png_crc_read(png_ptr, readbuf, length);
-      png_ptr->num_trans = (png_uint_16)length;
+      png_rust_set_num_trans(png_ptr->rust_ptr, (png_uint_16)length);
    }
 
    else
@@ -1901,7 +1901,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    if (png_crc_finish(png_ptr, 0) != 0)
    {
-      png_ptr->num_trans = 0;
+      png_rust_set_num_trans(png_ptr->rust_ptr, 0);
       return;
    }
 
@@ -1909,7 +1909,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     * png_struct ends up with a pointer to the tRNS buffer owned by the
     * png_info.  Fix this.
     */
-   png_set_tRNS(png_ptr, info_ptr, readbuf, png_ptr->num_trans,
+   png_set_tRNS(png_ptr, info_ptr, readbuf, png_rust_get_num_trans(png_ptr->rust_ptr),
        &(png_ptr->trans_color));
 }
 #endif
@@ -1994,9 +1994,9 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    else if (! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR)) /* GRAY */
    {
-      if (png_ptr->bit_depth <= 8)
+      if (png_rust_get_bit_depth(png_ptr->rust_ptr) <= 8)
       {
-         if (buf[0] != 0 || buf[1] >= (unsigned int)(1 << png_ptr->bit_depth))
+         if (buf[0] != 0 || buf[1] >= (unsigned int)(1 << png_rust_get_bit_depth(png_ptr->rust_ptr)))
          {
             png_chunk_benign_error(png_ptr, "invalid gray level");
             return;
@@ -2012,7 +2012,7 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    else
    {
-      if (png_ptr->bit_depth <= 8)
+      if (png_rust_get_bit_depth(png_ptr->rust_ptr) <= 8)
       {
          if (buf[0] != 0 || buf[2] != 0 || buf[4] != 0)
          {
@@ -3165,8 +3165,8 @@ png_check_chunk_length(png_const_structrp png_ptr, png_uint_32 length)
       png_alloc_size_t idat_limit = PNG_UINT_31_MAX;
       size_t row_factor =
          (size_t)png_ptr->width
-         * (size_t)png_ptr->channels
-         * (png_ptr->bit_depth > 8? 2: 1)
+         * (size_t)png_rust_get_channels(png_ptr->rust_ptr)
+         * (png_rust_get_bit_depth(png_ptr->rust_ptr) > 8? 2: 1)
          + 1
          + (png_rust_get_interlace(png_ptr->rust_ptr)? 6: 0);
       if (png_ptr->height > PNG_UINT_32_MAX/row_factor)
@@ -4100,7 +4100,7 @@ png_init_filter_functions(png_structrp pp)
     * interlacing causes the actual row width to vary.
     */
 {
-   unsigned int bpp = (pp->pixel_depth + 7) >> 3;
+   unsigned int bpp = (png_rust_get_pixel_depth(pp->rust_ptr) + 7) >> 3;
 
    pp->read_filter[PNG_FILTER_VALUE_SUB-1] = png_read_filter_row_sub;
    pp->read_filter[PNG_FILTER_VALUE_UP-1] = png_read_filter_row_up;
@@ -4431,7 +4431,7 @@ png_read_start_row(png_structrp png_ptr)
       png_ptr->iwidth = png_ptr->width;
    }
 
-   max_pixel_depth = (unsigned int)png_ptr->pixel_depth;
+   max_pixel_depth = (unsigned int)png_rust_get_pixel_depth(png_ptr->rust_ptr);
 
    /* WARNING: * png_read_transform_info (pngrtran.c) performs a simpler set of
     * calculations to calculate the final pixel depth, then
@@ -4444,7 +4444,7 @@ png_read_start_row(png_structrp png_ptr)
     * TODO: fix this.
     */
 #ifdef PNG_READ_PACK_SUPPORTED
-   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK) && png_ptr->bit_depth < 8)
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK) && png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
       max_pixel_depth = 8;
 #endif
 
@@ -4453,7 +4453,7 @@ png_read_start_row(png_structrp png_ptr)
    {
       if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE))
       {
-         if (png_ptr->num_trans != 0)
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0)
             max_pixel_depth = 32;
 
          else
@@ -4465,13 +4465,13 @@ png_read_start_row(png_structrp png_ptr)
          if (max_pixel_depth < 8)
             max_pixel_depth = 8;
 
-         if (png_ptr->num_trans != 0)
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0)
             max_pixel_depth *= 2;
       }
 
       else if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB))
       {
-         if (png_ptr->num_trans != 0)
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0)
          {
             max_pixel_depth *= 4;
             max_pixel_depth /= 3;
@@ -4489,7 +4489,7 @@ png_read_start_row(png_structrp png_ptr)
        */
       if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
       {
-         if (png_ptr->bit_depth < 16)
+         if (png_rust_get_bit_depth(png_ptr->rust_ptr) < 16)
             max_pixel_depth *= 2;
       }
       else
@@ -4527,7 +4527,7 @@ png_read_start_row(png_structrp png_ptr)
    {
       if (
 #ifdef PNG_READ_EXPAND_SUPPORTED
-          (png_ptr->num_trans != 0 &&
+          (png_rust_get_num_trans(png_ptr->rust_ptr) != 0 &&
            png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND)) ||
 #endif
 #ifdef PNG_READ_FILLER_SUPPORTED
@@ -4651,7 +4651,7 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
    png_debug1(3, "num_rows = %u,", png_ptr->num_rows);
    png_debug1(3, "rowbytes = %lu,", (unsigned long)png_ptr->rowbytes);
    png_debug1(3, "irowbytes = %lu",
-       (unsigned long)PNG_ROWBYTES(png_ptr->pixel_depth, png_ptr->iwidth) + 1);
+       (unsigned long)PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_ptr->iwidth) + 1);
 
    /* The sequential reader needs a buffer for IDAT, but the progressive reader
     * does not, so free the read buffer now regardless; the sequential reader

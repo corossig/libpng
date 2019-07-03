@@ -826,7 +826,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
    row_info.width = png_ptr->usr_width;
    row_info.channels = png_ptr->usr_channels;
-   row_info.bit_depth = png_ptr->usr_bit_depth;
+   row_info.bit_depth = png_rust_get_usr_bit_depth(png_ptr->rust_ptr);
    row_info.pixel_depth = (png_byte)(row_info.bit_depth * row_info.channels);
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
 
@@ -864,7 +864,7 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
    /* At this point the row_info pixel depth must match the 'transformed' depth,
     * which is also the output depth.
     */
-   if (row_info.pixel_depth != png_ptr->pixel_depth ||
+   if (row_info.pixel_depth != png_rust_get_pixel_depth(png_ptr->rust_ptr) ||
        row_info.pixel_depth != png_ptr->transformed_pixel_depth)
       png_error(png_ptr, "internal write transform logic error");
 
@@ -1020,23 +1020,23 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
 #endif /* WRITE_FILTER */
             /* FALLTHROUGH */
          case PNG_FILTER_VALUE_NONE:
-            png_ptr->do_filter = PNG_FILTER_NONE; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_NONE); break;
 
 #ifdef PNG_WRITE_FILTER_SUPPORTED
          case PNG_FILTER_VALUE_SUB:
-            png_ptr->do_filter = PNG_FILTER_SUB; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_SUB); break;
 
          case PNG_FILTER_VALUE_UP:
-            png_ptr->do_filter = PNG_FILTER_UP; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_UP); break;
 
          case PNG_FILTER_VALUE_AVG:
-            png_ptr->do_filter = PNG_FILTER_AVG; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_AVG); break;
 
          case PNG_FILTER_VALUE_PAETH:
-            png_ptr->do_filter = PNG_FILTER_PAETH; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_PAETH); break;
 
          default:
-            png_ptr->do_filter = (png_byte)filters; break;
+            png_rust_set_do_filter(png_ptr->rust_ptr, (png_byte)filters); break;
 #else
          default:
             png_app_error(png_ptr, "Unknown row filter for method 0");
@@ -1100,7 +1100,7 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
          /* Allocate needed row buffers if they have not already been
           * allocated.
           */
-         buf_size = PNG_ROWBYTES(png_ptr->usr_channels * png_ptr->usr_bit_depth,
+         buf_size = PNG_ROWBYTES(png_ptr->usr_channels * png_rust_get_usr_bit_depth(png_ptr->rust_ptr),
              png_ptr->width) + 1;
 
          if (png_ptr->try_row == NULL)
@@ -1114,7 +1114,7 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
                    png_malloc(png_ptr, buf_size));
          }
       }
-      png_ptr->do_filter = (png_byte)filters;
+      png_rust_set_do_filter(png_ptr->rust_ptr, (png_byte)filters);
 #endif
    }
    else

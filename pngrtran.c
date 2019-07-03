@@ -1126,12 +1126,12 @@ png_init_palette_transformations(png_structrp png_ptr)
    int input_has_alpha = 0;
    int input_has_transparency = 0;
 
-   if (png_ptr->num_trans > 0)
+   if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
    {
       int i;
 
       /* Ignore if all the entries are opaque (unlikely!) */
-      for (i=0; i<png_ptr->num_trans; ++i)
+      for (i=0; i<png_rust_get_num_trans(png_ptr->rust_ptr); ++i)
       {
          if (png_ptr->trans_alpha[i] == 255)
             continue;
@@ -1187,7 +1187,7 @@ png_init_palette_transformations(png_structrp png_ptr)
                /* Invert the alpha channel (in tRNS) unless the pixels are
                 * going to be expanded, in which case leave it for later
                 */
-               int i, istop = png_ptr->num_trans;
+               int i, istop = png_rust_get_num_trans(png_ptr->rust_ptr);
 
                for (i = 0; i < istop; i++)
                   png_ptr->trans_alpha[i] =
@@ -1208,7 +1208,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
     * background and alpha mode stuff if there isn't.
     */
    int input_has_alpha = png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA);
-   int input_has_transparency = png_ptr->num_trans > 0;
+   int input_has_transparency = png_rust_get_num_trans(png_ptr->rust_ptr) > 0;
 
    /* If no alpha we can optimize. */
    if (input_has_alpha == 0)
@@ -1244,7 +1244,7 @@ png_init_rgb_transformations(png_structrp png_ptr)
          int gray = png_ptr->background.gray;
          int trans_gray = png_ptr->trans_color.gray;
 
-         switch (png_ptr->bit_depth)
+         switch (png_rust_get_bit_depth(png_ptr->rust_ptr))
          {
             case 1:
                gray *= 0xff;
@@ -1407,7 +1407,7 @@ png_init_read_transformations(png_structrp png_ptr)
        * documentation - which says ask for what you want, accept what you
        * get.)  This makes the behavior consistent from 1.5.4:
        */
-      png_ptr->num_trans = 0;
+      png_rust_set_num_trans(png_ptr->rust_ptr, 0);
    }
 #endif /* STRIP_ALPHA supported, no COMPOSE */
 
@@ -1497,7 +1497,7 @@ png_init_read_transformations(png_structrp png_ptr)
    defined(PNG_READ_EXPAND_16_SUPPORTED)
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16 || PNG_COMPOSE) &&
        ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND) &&
-       png_ptr->bit_depth != 16)
+       png_rust_get_bit_depth(png_ptr->rust_ptr) != 16)
    {
       /* TODO: fix this.  Because the expand_16 operation is after the compose
        * handling the background color must be 8, not 16, bits deep, but the
@@ -1524,7 +1524,7 @@ png_init_read_transformations(png_structrp png_ptr)
    if (png_rust_one_of_transformations(png_ptr->rust_ptr, (PNG_16_TO_8|PNG_SCALE_16_TO_8)) &&
        png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
        ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND) &&
-       png_ptr->bit_depth == 16)
+       png_rust_get_bit_depth(png_ptr->rust_ptr) == 16)
    {
       /* On the other hand, if a 16-bit file is to be reduced to 8-bits per
        * component this will also happen after PNG_COMPOSE and so the background
@@ -1581,7 +1581,7 @@ png_init_read_transformations(png_structrp png_ptr)
         )) || (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ENCODE_ALPHA) &&
        png_gamma_significant(png_ptr->screen_gamma) != 0))
    {
-      png_build_gamma_table(png_ptr, png_ptr->bit_depth);
+      png_build_gamma_table(png_ptr, png_rust_get_bit_depth(png_ptr->rust_ptr));
 
 #ifdef PNG_READ_BACKGROUND_SUPPORTED
       if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
@@ -1681,7 +1681,7 @@ png_init_read_transformations(png_structrp png_ptr)
 
             for (i = 0; i < num_palette; i++)
             {
-               if (i < (int)png_ptr->num_trans &&
+               if (i < (int)png_rust_get_num_trans(png_ptr->rust_ptr) &&
                    png_ptr->trans_alpha[i] != 0xff)
                {
                   if (png_ptr->trans_alpha[i] == 0)
@@ -1848,7 +1848,7 @@ png_init_read_transformations(png_structrp png_ptr)
        (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)))
    {
       int i;
-      int istop = (int)png_ptr->num_trans;
+      int istop = (int)png_rust_get_num_trans(png_ptr->rust_ptr);
       png_color back;
       png_colorp palette = png_ptr->palette;
 
@@ -1946,7 +1946,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
           * png_do_expand_palette; if it ever checks the tRNS chunk to see if
           * it is all opaque we must do the same (at present it does not.)
           */
-         if (png_ptr->num_trans > 0)
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
             info_ptr->color_type = PNG_COLOR_TYPE_RGB_ALPHA;
 
          else
@@ -1960,7 +1960,7 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
       }
       else
       {
-         if (png_ptr->num_trans != 0)
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0)
          {
             if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
                info_ptr->color_type |= PNG_COLOR_MASK_ALPHA;
@@ -3644,7 +3644,7 @@ png_do_compose(png_row_infop row_info, png_bytep row, png_structrp png_ptr)
                }
             }
          }
-         else /* if (png_ptr->bit_depth == 16) */
+         else /* if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 16) */
          {
 #ifdef PNG_READ_GAMMA_SUPPORTED
             if (gamma_16 != NULL && gamma_16_from_1 != NULL &&
@@ -4312,7 +4312,7 @@ png_do_expand_palette(png_structrp png_ptr, png_row_infop row_info,
 #ifdef PNG_ARM_NEON_INTRINSICS_AVAILABLE
                if (png_ptr->riffled_palette != NULL)
                {
-                  /* The RGBA optimization works with png_ptr->bit_depth == 8
+                  /* The RGBA optimization works with png_rust_get_bit_depth(png_ptr->rust_ptr) == 8
                    * but sometimes row_info->bit_depth has been changed to 8.
                    * In these cases, the palette hasn't been riffled.
                    */
@@ -4768,7 +4768,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
       if (row_info->color_type == PNG_COLOR_TYPE_PALETTE)
       {
 #ifdef PNG_ARM_NEON_INTRINSICS_AVAILABLE
-         if ((png_ptr->num_trans > 0) && (png_ptr->bit_depth == 8))
+         if ((png_rust_get_num_trans(png_ptr->rust_ptr) > 0) && (png_rust_get_bit_depth(png_ptr->rust_ptr) == 8))
          {
             if (png_ptr->riffled_palette == NULL)
             {
@@ -4780,12 +4780,12 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
          }
 #endif
          png_do_expand_palette(png_ptr, row_info, png_ptr->row_buf + 1,
-             png_ptr->palette, png_ptr->trans_alpha, png_ptr->num_trans);
+             png_ptr->palette, png_ptr->trans_alpha, png_rust_get_num_trans(png_ptr->rust_ptr));
       }
 
       else
       {
-         if (png_ptr->num_trans != 0 &&
+         if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0 &&
              png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
             png_do_expand(row_info, png_ptr->row_buf + 1,
                 &(png_ptr->trans_color));
@@ -4887,7 +4887,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
        * do (if there is an alpha channel or transparency.)
        */
        !(png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE) &&
-       ((png_ptr->num_trans != 0) ||
+       ((png_rust_get_num_trans(png_ptr->rust_ptr) != 0) ||
        png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))) &&
 #endif
       /* Because png_init_read_transformations transforms the palette, unless

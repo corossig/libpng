@@ -215,7 +215,7 @@ png_image_size(png_structrp png_ptr)
           * both the filter byte and the padding to a byte boundary.
           */
          png_uint_32 w = png_ptr->width;
-         unsigned int pd = png_ptr->pixel_depth;
+         unsigned int pd = png_rust_get_pixel_depth(png_ptr->rust_ptr);
          png_alloc_size_t cb_base;
          int pass;
 
@@ -335,7 +335,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
          if (png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZLIB_CUSTOM_STRATEGY))
             strategy = png_ptr->zlib_strategy;
 
-         else if (png_ptr->do_filter != PNG_FILTER_NONE)
+         else if (! png_rust_is_do_filter(png_ptr->rust_ptr, PNG_FILTER_NONE))
             strategy = PNG_Z_DEFAULT_STRATEGY;
 
          else
@@ -690,7 +690,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
 #ifdef PNG_WRITE_16BIT_SUPPORTED
             case 16:
 #endif
-               png_ptr->channels = 1; break;
+               png_rust_set_channels(png_ptr->rust_ptr, 1); break;
 
             default:
                png_error(png_ptr,
@@ -706,7 +706,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
          if (is_invalid_depth)
             png_error(png_ptr, "Invalid bit depth for RGB image");
 
-         png_ptr->channels = 3;
+         png_rust_set_channels(png_ptr->rust_ptr, 3);
          break;
 
       case PNG_COLOR_TYPE_PALETTE:
@@ -716,7 +716,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
             case 2:
             case 4:
             case 8:
-               png_ptr->channels = 1;
+               png_rust_set_channels(png_ptr->rust_ptr, 1);
                break;
 
             default:
@@ -732,7 +732,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
          if (is_invalid_depth)
             png_error(png_ptr, "Invalid bit depth for grayscale+alpha image");
 
-         png_ptr->channels = 2;
+         png_rust_set_channels(png_ptr->rust_ptr, 2);
          break;
 
       case PNG_COLOR_TYPE_RGB_ALPHA:
@@ -743,7 +743,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
          if (is_invalid_depth)
             png_error(png_ptr, "Invalid bit depth for RGBA image");
 
-         png_ptr->channels = 4;
+         png_rust_set_channels(png_ptr->rust_ptr, 4);
          break;
 
       default:
@@ -791,7 +791,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
 #endif
 
    /* Save the relevant information */
-   png_ptr->bit_depth = (png_byte)bit_depth;
+   png_rust_set_bit_depth(png_ptr->rust_ptr, (png_byte)bit_depth);
    png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
@@ -801,12 +801,12 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    png_ptr->width = width;
    png_ptr->height = height;
 
-   png_ptr->pixel_depth = (png_byte)(bit_depth * png_ptr->channels);
-   png_ptr->rowbytes = PNG_ROWBYTES(png_ptr->pixel_depth, width);
+   png_rust_set_pixel_depth(png_ptr->rust_ptr, (png_byte)(bit_depth * png_rust_get_channels(png_ptr->rust_ptr)));
+   png_ptr->rowbytes = PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), width);
    /* Set the usr info, so any transformations can modify it */
    png_ptr->usr_width = png_ptr->width;
-   png_ptr->usr_bit_depth = png_ptr->bit_depth;
-   png_ptr->usr_channels = png_ptr->channels;
+   png_rust_set_usr_bit_depth(png_ptr->rust_ptr, png_rust_get_bit_depth(png_ptr->rust_ptr));
+   png_ptr->usr_channels = png_rust_get_channels(png_ptr->rust_ptr);
 
    /* Pack the header information into the buffer */
    png_save_uint_32(buf, width);
@@ -820,14 +820,14 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    /* Write the chunk */
    png_write_complete_chunk(png_ptr, png_IHDR, buf, 13);
 
-   if ((png_ptr->do_filter) == PNG_NO_FILTERS)
+   if ( png_rust_is_do_filter(png_ptr->rust_ptr, PNG_NO_FILTERS) )
    {
       if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE) ||
-          png_ptr->bit_depth < 8)
-         png_ptr->do_filter = PNG_FILTER_NONE;
+          png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
+         png_rust_set_do_filter(png_ptr->rust_ptr, PNG_FILTER_NONE);
 
       else
-         png_ptr->do_filter = PNG_ALL_FILTERS;
+         png_rust_set_do_filter(png_ptr->rust_ptr, PNG_ALL_FILTERS);
    }
 
    png_rust_set_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR); /* not READY_FOR_ZTXT */
@@ -848,7 +848,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
    png_debug(1, "in png_write_PLTE");
 
    max_palette_length = (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE)) ?
-      (1 << png_ptr->bit_depth) : PNG_MAX_PALETTE_LENGTH;
+      (1 << png_rust_get_bit_depth(png_ptr->rust_ptr)) : PNG_MAX_PALETTE_LENGTH;
 
    if ((
 #ifdef PNG_MNG_FEATURES_SUPPORTED
@@ -1272,7 +1272,7 @@ png_write_sBIT(png_structrp png_ptr, png_const_color_8p sbit, int color_type)
       png_byte maxbits;
 
       maxbits = (png_byte)(color_type==PNG_COLOR_TYPE_PALETTE ? 8 :
-          png_ptr->usr_bit_depth);
+          png_rust_get_usr_bit_depth(png_ptr->rust_ptr));
 
       if (sbit->red == 0 || sbit->red > maxbits ||
           sbit->green == 0 || sbit->green > maxbits ||
@@ -1290,7 +1290,7 @@ png_write_sBIT(png_structrp png_ptr, png_const_color_8p sbit, int color_type)
 
    else
    {
-      if (sbit->gray == 0 || sbit->gray > png_ptr->usr_bit_depth)
+      if (sbit->gray == 0 || sbit->gray > png_rust_get_usr_bit_depth(png_ptr->rust_ptr))
       {
          png_warning(png_ptr, "Invalid sBIT depth specified");
          return;
@@ -1302,7 +1302,7 @@ png_write_sBIT(png_structrp png_ptr, png_const_color_8p sbit, int color_type)
 
    if ((color_type & PNG_COLOR_MASK_ALPHA) != 0)
    {
-      if (sbit->alpha == 0 || sbit->alpha > png_ptr->usr_bit_depth)
+      if (sbit->alpha == 0 || sbit->alpha > png_rust_get_usr_bit_depth(png_ptr->rust_ptr))
       {
          png_warning(png_ptr, "Invalid sBIT depth specified");
          return;
@@ -1368,7 +1368,7 @@ png_write_tRNS(png_structrp png_ptr, png_const_bytep trans_alpha,
    else if (color_type == PNG_COLOR_TYPE_GRAY)
    {
       /* One 16-bit value */
-      if (tran->gray >= (1 << png_ptr->bit_depth))
+      if (tran->gray >= (1 << png_rust_get_bit_depth(png_ptr->rust_ptr)))
       {
          png_app_warning(png_ptr,
              "Ignoring attempt to write tRNS chunk out-of-range for bit_depth");
@@ -1387,7 +1387,7 @@ png_write_tRNS(png_structrp png_ptr, png_const_bytep trans_alpha,
       png_save_uint_16(buf + 2, tran->green);
       png_save_uint_16(buf + 4, tran->blue);
 #ifdef PNG_WRITE_16BIT_SUPPORTED
-      if (png_ptr->bit_depth == 8 && (buf[0] | buf[2] | buf[4]) != 0)
+      if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 8 && (buf[0] | buf[2] | buf[4]) != 0)
 #else
       if ((buf[0] | buf[2] | buf[4]) != 0)
 #endif
@@ -1439,7 +1439,7 @@ png_write_bKGD(png_structrp png_ptr, png_const_color_16p back, int color_type)
       png_save_uint_16(buf + 2, back->green);
       png_save_uint_16(buf + 4, back->blue);
 #ifdef PNG_WRITE_16BIT_SUPPORTED
-      if (png_ptr->bit_depth == 8 && (buf[0] | buf[2] | buf[4]) != 0)
+      if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 8 && (buf[0] | buf[2] | buf[4]) != 0)
 #else
       if ((buf[0] | buf[2] | buf[4]) != 0)
 #endif
@@ -1456,7 +1456,7 @@ png_write_bKGD(png_structrp png_ptr, png_const_color_16p back, int color_type)
 
    else
    {
-      if (back->gray >= (1 << png_ptr->bit_depth))
+      if (back->gray >= (1 << png_rust_get_bit_depth(png_ptr->rust_ptr)))
       {
          png_warning(png_ptr,
              "Ignoring attempt to write bKGD chunk out-of-range for bit_depth");
@@ -1913,11 +1913,11 @@ png_write_start_row(png_structrp png_ptr)
 
    png_debug(1, "in png_write_start_row");
 
-   usr_pixel_depth = png_ptr->usr_channels * png_ptr->usr_bit_depth;
+   usr_pixel_depth = png_ptr->usr_channels * png_rust_get_usr_bit_depth(png_ptr->rust_ptr);
    buf_size = PNG_ROWBYTES(usr_pixel_depth, png_ptr->width) + 1;
 
    /* 1.5.6: added to allow checking in the row write code. */
-   png_ptr->transformed_pixel_depth = png_ptr->pixel_depth;
+   png_ptr->transformed_pixel_depth = png_rust_get_pixel_depth(png_ptr->rust_ptr);
    png_ptr->maximum_pixel_depth = (png_byte)usr_pixel_depth;
 
    /* Set up row buffer */
@@ -1926,7 +1926,7 @@ png_write_start_row(png_structrp png_ptr)
    png_ptr->row_buf[0] = PNG_FILTER_VALUE_NONE;
 
 #ifdef PNG_WRITE_FILTER_SUPPORTED
-   filters = png_ptr->do_filter;
+   filters = png_rust_get_do_filter(png_ptr->rust_ptr);
 
    if (png_ptr->height == 1)
       filters &= 0xff & ~(PNG_FILTER_UP|PNG_FILTER_AVG|PNG_FILTER_PAETH);
@@ -1937,7 +1937,7 @@ png_write_start_row(png_structrp png_ptr)
    if (filters == 0)
       filters = PNG_FILTER_NONE;
 
-   png_ptr->do_filter = filters;
+   png_rust_set_do_filter(png_ptr->rust_ptr, filters);
 
    if (((filters & (PNG_FILTER_SUB | PNG_FILTER_UP | PNG_FILTER_AVG |
        PNG_FILTER_PAETH)) != 0) && png_ptr->try_row == NULL)
@@ -2071,7 +2071,7 @@ png_write_finish_row(png_structrp png_ptr)
          if (png_ptr->prev_row != NULL)
             memset(png_ptr->prev_row, 0,
                 PNG_ROWBYTES(png_ptr->usr_channels *
-                png_ptr->usr_bit_depth, png_ptr->width) + 1);
+                png_rust_get_usr_bit_depth(png_ptr->rust_ptr), png_ptr->width) + 1);
 
          return;
       }
@@ -2551,7 +2551,7 @@ png_write_find_filter(png_structrp png_ptr, png_row_infop row_info)
 #ifndef PNG_WRITE_FILTER_SUPPORTED
    png_write_filtered_row(png_ptr, png_ptr->row_buf, row_info->rowbytes+1);
 #else
-   unsigned int filter_to_do = png_ptr->do_filter;
+   unsigned int filter_to_do = png_rust_get_do_filter(png_ptr->rust_ptr);
    png_bytep row_buf;
    png_bytep best_row;
    png_uint_32 bpp;

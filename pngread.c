@@ -398,9 +398,9 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    /* 1.5.6: row_info moved out of png_struct to a local here. */
    row_info.width = png_ptr->iwidth; /* NOTE: width of current interlaced row */
    row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
-   row_info.bit_depth = png_ptr->bit_depth;
-   row_info.channels = png_ptr->channels;
-   row_info.pixel_depth = png_ptr->pixel_depth;
+   row_info.bit_depth = png_rust_get_bit_depth(png_ptr->rust_ptr);
+   row_info.channels = png_rust_get_channels(png_ptr->rust_ptr);
+   row_info.pixel_depth = png_rust_get_pixel_depth(png_ptr->rust_ptr);
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
 
 #ifdef PNG_WARNINGS_SUPPORTED
@@ -1366,10 +1366,10 @@ png_image_format(png_structrp png_ptr)
     * precise interaction with an app call to png_set_tRNS and PNG file reading
     * is unclear.
     */
-   else if (png_ptr->num_trans > 0)
+   else if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
       format |= PNG_FORMAT_FLAG_ALPHA;
 
-   if (png_ptr->bit_depth == 16)
+   if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 16)
       format |= PNG_FORMAT_FLAG_LINEAR;
 
    if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_PALETTE))
@@ -1445,7 +1445,7 @@ png_image_read_header(png_voidp argument)
       switch (png_rust_get_color_type(png_ptr->rust_ptr))
       {
          case PNG_COLOR_TYPE_GRAY:
-            cmap_entries = 1U << png_ptr->bit_depth;
+            cmap_entries = 1U << png_rust_get_bit_depth(png_ptr->rust_ptr);
             break;
 
          case PNG_COLOR_TYPE_PALETTE:
@@ -2116,7 +2116,7 @@ png_image_read_colormap(png_voidp argument)
     * color-map.
     */
    if ((png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA) ||
-         png_ptr->num_trans > 0) /* alpha in input */ &&
+         png_rust_get_num_trans(png_ptr->rust_ptr) > 0) /* alpha in input */ &&
       ((output_format & PNG_FORMAT_FLAG_ALPHA) == 0) /* no alpha in output */)
    {
       if (output_encoding == P_LINEAR) /* compose on black */
@@ -2161,7 +2161,7 @@ png_image_read_colormap(png_voidp argument)
        * it is the setting will be ignored)  Note that the same thing can be
        * achieved at the application interface with png_set_gAMA.
        */
-      if (png_ptr->bit_depth == 16 &&
+      if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 16 &&
          (image->flags & PNG_IMAGE_FLAG_16BIT_sRGB) == 0)
          png_ptr->colorspace.gamma = PNG_GAMMA_LINEAR;
 
@@ -2179,14 +2179,14 @@ png_image_read_colormap(png_voidp argument)
    switch (png_rust_get_color_type(png_ptr->rust_ptr))
    {
       case PNG_COLOR_TYPE_GRAY:
-         if (png_ptr->bit_depth <= 8)
+         if (png_rust_get_bit_depth(png_ptr->rust_ptr) <= 8)
          {
             /* There at most 256 colors in the output, regardless of
              * transparency.
              */
             unsigned int step, i, val, trans = 256/*ignore*/, back_alpha = 0;
 
-            cmap_entries = 1U << png_ptr->bit_depth;
+            cmap_entries = 1U << png_rust_get_bit_depth(png_ptr->rust_ptr);
             if (cmap_entries > image->colormap_entries)
                png_error(png_ptr, "gray[8] color-map: too few entries");
 
@@ -2196,7 +2196,7 @@ png_image_read_colormap(png_voidp argument)
             /* If there is a tRNS chunk then this either selects a transparent
              * value or, if the output has no alpha, the background color.
              */
-            if (png_ptr->num_trans > 0)
+            if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
             {
                trans = png_ptr->trans_color.gray;
 
@@ -2242,7 +2242,7 @@ png_image_read_colormap(png_voidp argument)
              * byte per pixel.  This is what png_set_packing does (i.e., it
              * unpacks the bit values into bytes.)
              */
-            if (png_ptr->bit_depth < 8)
+            if (png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
                png_set_packing(png_ptr);
          }
 
@@ -2271,7 +2271,7 @@ png_image_read_colormap(png_voidp argument)
 
             cmap_entries = (unsigned int)make_gray_colormap(display);
 
-            if (png_ptr->num_trans > 0)
+            if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
             {
                unsigned int back_alpha;
 
@@ -2528,7 +2528,7 @@ png_image_read_colormap(png_voidp argument)
              * channels.  The more complex case arises when the input has alpha.
              */
             if ((png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
-               png_ptr->num_trans > 0) &&
+               png_rust_get_num_trans(png_ptr->rust_ptr) > 0) &&
                (output_format & PNG_FORMAT_FLAG_ALPHA) != 0)
             {
                /* Both input and output have an alpha channel, so no background
@@ -2563,7 +2563,7 @@ png_image_read_colormap(png_voidp argument)
                 * alternative of double gamma correction.
                 */
                if ((png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
-                  png_ptr->num_trans > 0) &&
+                  png_rust_get_num_trans(png_ptr->rust_ptr) > 0) &&
                   png_gamma_not_sRGB(png_ptr->colorspace.gamma) != 0)
                {
                   cmap_entries = (unsigned int)make_gray_file_colormap(display);
@@ -2576,7 +2576,7 @@ png_image_read_colormap(png_voidp argument)
                /* But if the input has alpha or transparency it must be removed
                 */
                if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
-                  png_ptr->num_trans > 0)
+                  png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
                {
                   png_color_16 c;
                   png_uint_32 gray = back_g;
@@ -2647,7 +2647,7 @@ png_image_read_colormap(png_voidp argument)
 
             /* Is there any transparency or alpha? */
             if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA) ||
-               png_ptr->num_trans > 0)
+               png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
             {
                /* Is there alpha in the output too?  If so all four channels are
                 * processed into a special RGB cube with alpha support.
@@ -2804,7 +2804,7 @@ png_image_read_colormap(png_voidp argument)
           * tRNS entries though.
           */
          {
-            unsigned int num_trans = png_ptr->num_trans;
+            unsigned int num_trans = png_rust_get_num_trans(png_ptr->rust_ptr);
             png_const_bytep trans = num_trans > 0 ? png_ptr->trans_alpha : NULL;
             png_const_colorp colormap = png_ptr->palette;
             int do_background = trans != NULL &&
@@ -2859,7 +2859,7 @@ png_image_read_colormap(png_voidp argument)
             /* The PNG data may have indices packed in fewer than 8 bits, it
              * must be expanded if so.
              */
-            if (png_ptr->bit_depth < 8)
+            if (png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
                png_set_packing(png_ptr);
          }
          break;
@@ -2870,7 +2870,7 @@ png_image_read_colormap(png_voidp argument)
    }
 
    /* Now deal with the output processing */
-   if (expand_tRNS != 0 && png_ptr->num_trans > 0 &&
+   if (expand_tRNS != 0 && png_rust_get_num_trans(png_ptr->rust_ptr) > 0 &&
        ! png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
       png_set_tRNS_to_alpha(png_ptr);
 
@@ -2882,7 +2882,7 @@ png_image_read_colormap(png_voidp argument)
          /* FALLTHROUGH */
 
       case P_FILE:
-         if (png_ptr->bit_depth > 8)
+         if (png_rust_get_bit_depth(png_ptr->rust_ptr) > 8)
             png_set_scale_16(png_ptr);
          break;
 

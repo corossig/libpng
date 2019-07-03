@@ -264,7 +264,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
       png_ptr->process_mode = PNG_READ_IDAT_MODE;
       png_push_have_info(png_ptr, info_ptr);
       png_ptr->zstream.avail_out =
-          (uInt) PNG_ROWBYTES(png_ptr->pixel_depth,
+          (uInt) PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr),
           png_ptr->iwidth) + 1;
       png_ptr->zstream.next_out = png_ptr->row_buf;
       return;
@@ -654,7 +654,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
       if (!(png_ptr->zstream.avail_out > 0))
       {
          /* TODO: WARNING: TRUNCATION ERROR: DANGER WILL ROBINSON: */
-         png_ptr->zstream.avail_out = (uInt)(PNG_ROWBYTES(png_ptr->pixel_depth,
+         png_ptr->zstream.avail_out = (uInt)(PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr),
              png_ptr->iwidth) + 1);
 
          png_ptr->zstream.next_out = png_ptr->row_buf;
@@ -742,9 +742,9 @@ png_push_process_row(png_structrp png_ptr)
 
    row_info.width = png_ptr->iwidth; /* NOTE: width of current interlaced row */
    row_info.color_type = png_rust_get_color_type(png_ptr->rust_ptr);
-   row_info.bit_depth = png_ptr->bit_depth;
-   row_info.channels = png_ptr->channels;
-   row_info.pixel_depth = png_ptr->pixel_depth;
+   row_info.bit_depth = png_rust_get_bit_depth(png_ptr->rust_ptr);
+   row_info.channels = png_rust_get_channels(png_ptr->rust_ptr);
+   row_info.pixel_depth = png_rust_get_pixel_depth(png_ptr->rust_ptr);
    row_info.rowbytes = PNG_ROWBYTES(row_info.pixel_depth, row_info.width);
 
    if (png_ptr->row_buf[0] > PNG_FILTER_VALUE_NONE)

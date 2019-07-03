@@ -38,7 +38,7 @@ png_set_swap(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   if (png_ptr->bit_depth == 16)
+   if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 16)
       png_rust_add_transformations(png_ptr->rust_ptr, PNG_SWAP_BYTES);
 }
 #endif
@@ -53,11 +53,11 @@ png_set_packing(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   if (png_ptr->bit_depth < 8)
+   if (png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
    {
       png_rust_add_transformations(png_ptr->rust_ptr, PNG_PACK);
 #     ifdef PNG_WRITE_SUPPORTED
-         png_ptr->usr_bit_depth = 8;
+         png_rust_set_usr_bit_depth(png_ptr->rust_ptr, 8);
 #     endif
    }
 }
@@ -73,7 +73,7 @@ png_set_packswap(png_structrp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   if (png_ptr->bit_depth < 8)
+   if (png_rust_get_bit_depth(png_ptr->rust_ptr) < 8)
       png_rust_add_transformations(png_ptr->rust_ptr, PNG_PACKSWAP);
 }
 #endif
@@ -158,7 +158,7 @@ png_set_filler(png_structrp png_ptr, png_uint_32 filler, int filler_loc)
                break;
 
             case PNG_COLOR_TYPE_GRAY:
-               if (png_ptr->bit_depth >= 8)
+               if (png_rust_get_bit_depth(png_ptr->rust_ptr) >= 8)
                {
                   png_ptr->usr_channels = 2;
                   break;
