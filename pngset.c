@@ -1582,7 +1582,7 @@ png_set_compression_buffer_size(png_structrp png_ptr, size_t size)
 #  ifdef PNG_WRITE_SUPPORTED
    if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT) )
    {
-      if (png_ptr->zowner != 0)
+      if (png_rust_get_zowner(png_ptr->rust_ptr) != 0)
       {
          png_warning(png_ptr,
              "Compression buffer size cannot be changed because it is in use");

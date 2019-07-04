@@ -179,6 +179,24 @@ pub struct Png {
                           /* pixel depth used for the row buffers */
     transformed_pixel_depth: u8,
                           /* pixel depth after read/write transforms */
+
+    info_fn: CPtr,              /* called after header data fully read */
+    row_fn: CPtr,               /* called after a prog. row is decoded */
+    end_fn: CPtr,               /* called after image is complete */
+    save_buffer_ptr: CPtr,      /* current location in save_buffer */
+    save_buffer: CPtr,          /* buffer for previously read data */
+    current_buffer_ptr: CPtr,   /* current location in current_buffer */
+    current_buffer: CPtr,       /* buffer for recently used data */
+    push_length: u32,           /* size of current input chunk */
+    skip_length: u32,           /* bytes to skip in input data */
+    save_buffer_size: usize,    /* amount of data now in save_buffer */
+    save_buffer_max: usize,     /* total size of save_buffer */
+    buffer_size: usize,         /* total amount of available input data */
+    current_buffer_size: usize, /* amount of data now in current_buffer */
+    process_mode: i32,          /* what push library is currently doing */
+    cur_palette: i32,           /* current push library palette index */
+    zowner: u32,                /* ID (chunk type) of zstream owner, 0 if none */
+    io_ptr: CPtr,               /* ptr to application struct for I/O functions */
 }
 
 impl Drop for Png {
@@ -229,6 +247,23 @@ pub extern fn png_rust_new() -> *mut Png
         sig_bytes: 0,
         maximum_pixel_depth: 0,
         transformed_pixel_depth: 0,
+        info_fn: 0,
+        row_fn: 0,
+        end_fn: 0,
+        save_buffer_ptr: 0,
+        save_buffer: 0,
+        current_buffer_ptr: 0,
+        current_buffer: 0,
+        push_length: 0,
+        skip_length: 0,
+        save_buffer_size: 0,
+        save_buffer_max: 0,
+        buffer_size: 0,
+        current_buffer_size: 0,
+        process_mode: 0,
+        cur_palette: 0,
+        zowner: 0,
+        io_ptr: 0,
     });
     Box::into_raw(obj)
 }
@@ -487,6 +522,43 @@ pub unsafe extern fn png_rust_incr_row_number(this: *mut Png)
     this.as_mut().unwrap().row_number += 1;
 }
 
+#[no_mangle]
+pub unsafe extern fn png_rust_add_current_buffer_ptr(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().current_buffer_ptr += value;
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_add_save_buffer_size(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().save_buffer_size += value;
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_add_save_buffer_ptr(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().save_buffer_ptr += value;
+}
+
+
+#[no_mangle]
+pub unsafe extern fn png_rust_sub_current_buffer_size(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().current_buffer_size -= value;
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_sub_save_buffer_size(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().save_buffer_size -= value;
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_sub_buffer_size(this: *mut Png, value: usize)
+{
+    this.as_mut().unwrap().buffer_size -= value;
+}
+
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
@@ -541,3 +613,20 @@ get_set!(usr_channels,   u8);
 get_set!(sig_bytes,      u8);
 get_set!(maximum_pixel_depth,     u8);
 get_set!(transformed_pixel_depth, u8);
+get_set!(info_fn,        CPtr);
+get_set!(row_fn,         CPtr);
+get_set!(end_fn,         CPtr);
+get_set!(save_buffer_ptr,         CPtr);
+get_set!(save_buffer,    CPtr);
+get_set!(current_buffer_ptr,      CPtr);
+get_set!(current_buffer, CPtr);
+get_set!(push_length,    u32);
+get_set!(skip_length,    u32);
+get_set!(save_buffer_size,        usize);
+get_set!(save_buffer_max,         usize);
+get_set!(buffer_size,             usize);
+get_set!(current_buffer_size,     usize);
+get_set!(process_mode,   i32);
+get_set!(cur_palette,    i32);
+get_set!(zowner,         u32);
+get_set!(io_ptr,         CPtr);

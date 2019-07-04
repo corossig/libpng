@@ -291,7 +291,7 @@ static int
 png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
     png_alloc_size_t data_size)
 {
-   if (png_ptr->zowner != 0)
+   if (png_rust_get_zowner(png_ptr->rust_ptr) != 0)
    {
 #if defined(PNG_WARNINGS_SUPPORTED) || defined(PNG_ERROR_TEXT_SUPPORTED)
       char msg[64];
@@ -299,7 +299,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
       PNG_STRING_FROM_CHUNK(msg, owner);
       msg[4] = ':';
       msg[5] = ' ';
-      PNG_STRING_FROM_CHUNK(msg+6, png_ptr->zowner);
+      PNG_STRING_FROM_CHUNK(msg+6, png_rust_get_zowner(png_ptr->rust_ptr));
       /* So the message that results is "<chunk> using zstream"; this is an
        * internal error, but is very useful for debugging.  i18n requirements
        * are minimal.
@@ -310,13 +310,13 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
          png_warning(png_ptr, msg);
 
          /* Attempt sane error recovery */
-         if (png_ptr->zowner == png_IDAT) /* don't steal from IDAT */
+         if (png_rust_get_zowner(png_ptr->rust_ptr) == png_IDAT) /* don't steal from IDAT */
          {
             png_ptr->zstream.msg = PNGZ_MSG_CAST("in use by IDAT");
             return Z_STREAM_ERROR;
          }
 
-         png_ptr->zowner = 0;
+         png_rust_set_zowner(png_ptr->rust_ptr, 0);
 #else
          png_error(png_ptr, msg);
 #endif
@@ -424,7 +424,7 @@ png_deflate_claim(png_structrp png_ptr, png_uint_32 owner,
        * pretty much the same set of error codes.
        */
       if (ret == Z_OK)
-         png_ptr->zowner = owner;
+         png_rust_set_zowner(png_ptr->rust_ptr, owner);
 
       else
          png_zstream_error(png_ptr, ret);
@@ -608,7 +608,7 @@ png_text_compress(png_structrp png_ptr, png_uint_32 chunk_name,
          png_zstream_error(png_ptr, ret);
 
       /* Reset zlib for another zTXt/iTXt or image data */
-      png_ptr->zowner = 0;
+      png_rust_set_zowner(png_ptr->rust_ptr, 0);
 
       /* The only success case is Z_STREAM_END, input_len must be 0; if not this
        * is an internal error.
@@ -930,7 +930,7 @@ void /* PRIVATE */
 png_compress_IDAT(png_structrp png_ptr, png_const_bytep input,
     png_alloc_size_t input_len, int flush)
 {
-   if (png_ptr->zowner != png_IDAT)
+   if (png_rust_get_zowner(png_ptr->rust_ptr) != png_IDAT)
    {
       /* First time.   Ensure we have a temporary buffer for compression and
        * trim the buffer list if it has more than one entry to free memory.
@@ -1054,7 +1054,7 @@ png_compress_IDAT(png_structrp png_ptr, png_const_bytep input,
          png_ptr->zstream.next_out = NULL;
          png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT | PNG_AFTER_IDAT);
 
-         png_ptr->zowner = 0; /* Release the stream */
+         png_rust_set_zowner(png_ptr->rust_ptr, 0); /* Release the stream */
          return;
       }
 

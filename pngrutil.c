@@ -339,11 +339,11 @@ png_read_buffer(png_structrp png_ptr, png_alloc_size_t new_size, int warn)
 static int
 png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
 {
-   if (png_ptr->zowner != 0)
+   if (png_rust_get_zowner(png_ptr->rust_ptr) != 0)
    {
       char msg[64];
 
-      PNG_STRING_FROM_CHUNK(msg, png_ptr->zowner);
+      PNG_STRING_FROM_CHUNK(msg, png_rust_get_zowner(png_ptr->rust_ptr));
       /* So the message that results is "<chunk> using zstream"; this is an
        * internal error, but is very useful for debugging.  i18n requirements
        * are minimal.
@@ -351,7 +351,7 @@ png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
       (void)png_safecat(msg, (sizeof msg), 4, " using zstream");
 #if PNG_RELEASE_BUILD
       png_chunk_warning(png_ptr, msg);
-      png_ptr->zowner = 0;
+      png_rust_set_zowner(png_ptr->rust_ptr, 0);
 #else
       png_chunk_error(png_ptr, msg);
 #endif
@@ -428,7 +428,7 @@ png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
 #endif
 
       if (ret == Z_OK)
-         png_ptr->zowner = owner;
+         png_rust_set_zowner(png_ptr->rust_ptr, owner);
 
       else
          png_zstream_error(png_ptr, ret);
@@ -484,7 +484,7 @@ png_inflate(png_structrp png_ptr, png_uint_32 owner, int finish,
     /* INPUT: */ png_const_bytep input, png_uint_32p input_size_ptr,
     /* OUTPUT: */ png_bytep output, png_alloc_size_t *output_size_ptr)
 {
-   if (png_ptr->zowner == owner) /* Else not claimed */
+   if (png_rust_get_zowner(png_ptr->rust_ptr) == owner) /* Else not claimed */
    {
       int ret;
       png_alloc_size_t avail_out = *output_size_ptr;
@@ -745,7 +745,7 @@ png_decompress_chunk(png_structrp png_ptr,
             ret = PNG_UNEXPECTED_ZLIB_RETURN;
 
          /* Release the claimed stream */
-         png_ptr->zowner = 0;
+         png_rust_set_zowner(png_ptr->rust_ptr, 0);
       }
 
       else /* the claim failed */ if (ret == Z_STREAM_END) /* impossible! */
@@ -773,7 +773,7 @@ png_inflate_read(png_structrp png_ptr, png_bytep read_buffer, uInt read_size,
     png_uint_32p chunk_bytes, png_bytep next_out, png_alloc_size_t *out_size,
     int finish)
 {
-   if (png_ptr->zowner == png_rust_get_chunk_name(png_ptr->rust_ptr))
+   if (png_rust_get_zowner(png_ptr->rust_ptr) == png_rust_get_chunk_name(png_ptr->rust_ptr))
    {
       int ret;
 
@@ -1577,7 +1577,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
                                     if (errmsg == NULL)
                                     {
-                                       png_ptr->zowner = 0;
+                                       png_rust_set_zowner(png_ptr->rust_ptr, 0);
                                        return;
                                     }
                                  }
@@ -1604,7 +1604,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                   errmsg = png_ptr->zstream.msg;
 
                /* Release the stream */
-               png_ptr->zowner = 0;
+               png_rust_set_zowner(png_ptr->rust_ptr, 0);
             }
 
             else /* png_inflate_claim failed */
@@ -4302,14 +4302,14 @@ png_read_finish_IDAT(png_structrp png_ptr)
    /* If the zstream has not been released do it now *and* terminate the reading
     * of the final IDAT chunk.
     */
-   if (png_ptr->zowner == png_IDAT)
+   if (png_rust_get_zowner(png_ptr->rust_ptr) == png_IDAT)
    {
       /* Always do this; the pointers otherwise point into the read buffer. */
       png_ptr->zstream.next_in = NULL;
       png_ptr->zstream.avail_in = 0;
 
       /* Now we no longer own the zstream. */
-      png_ptr->zowner = 0;
+      png_rust_set_zowner(png_ptr->rust_ptr, 0);
 
       /* The slightly weird semantics of the sequential IDAT reading is that we
        * are always in or at the end of an IDAT chunk, so we always need to do a

@@ -25,10 +25,10 @@
 #define PNG_ERROR_MODE      8
 
 #define PNG_PUSH_SAVE_BUFFER_IF_FULL \
-if (png_ptr->push_length + 4 > png_ptr->buffer_size) \
+if (png_rust_get_push_length(png_ptr->rust_ptr) + 4 > png_rust_get_buffer_size(png_ptr->rust_ptr)) \
    { png_push_save_buffer(png_ptr); return; }
 #define PNG_PUSH_SAVE_BUFFER_IF_LT(N) \
-if (png_ptr->buffer_size < N) \
+if (png_rust_get_buffer_size(png_ptr->rust_ptr) < N) \
    { png_push_save_buffer(png_ptr); return; }
 
 void PNGAPI
@@ -40,7 +40,7 @@ png_process_data(png_structrp png_ptr, png_inforp info_ptr,
 
    png_push_restore_buffer(png_ptr, buffer, buffer_size);
 
-   while (png_ptr->buffer_size)
+   while (png_rust_get_buffer_size(png_ptr->rust_ptr))
    {
       png_process_some_data(png_ptr, info_ptr);
    }
@@ -59,14 +59,14 @@ png_process_data_pause(png_structrp png_ptr, int save)
       else
       {
          /* This includes any pending saved bytes: */
-         size_t remaining = png_ptr->buffer_size;
-         png_ptr->buffer_size = 0;
+         size_t remaining = png_rust_get_buffer_size(png_ptr->rust_ptr);
+         png_rust_set_buffer_size(png_ptr->rust_ptr, 0);
 
          /* So subtract the saved buffer size, unless all the data
           * is actually 'saved', in which case we just return 0
           */
-         if (png_ptr->save_buffer_size < remaining)
-            return remaining - png_ptr->save_buffer_size;
+         if (png_rust_get_save_buffer_size(png_ptr->rust_ptr) < remaining)
+            return remaining - png_rust_get_save_buffer_size(png_ptr->rust_ptr);
       }
    }
 
@@ -95,7 +95,7 @@ png_process_some_data(png_structrp png_ptr, png_inforp info_ptr)
    if (png_ptr == NULL)
       return;
 
-   switch (png_ptr->process_mode)
+   switch (png_rust_get_process_mode(png_ptr->rust_ptr))
    {
       case PNG_READ_SIG_MODE:
       {
@@ -117,7 +117,7 @@ png_process_some_data(png_structrp png_ptr, png_inforp info_ptr)
 
       default:
       {
-         png_ptr->buffer_size = 0;
+         png_rust_set_buffer_size(png_ptr->rust_ptr, 0);
          break;
       }
    }
@@ -135,9 +135,9 @@ png_push_read_sig(png_structrp png_ptr, png_inforp info_ptr)
    size_t num_checked = png_rust_get_sig_bytes(png_ptr->rust_ptr); /* SAFE, does not exceed 8 */
    size_t num_to_check = 8 - num_checked;
 
-   if (png_ptr->buffer_size < num_to_check)
+   if (png_rust_get_buffer_size(png_ptr->rust_ptr) < num_to_check)
    {
-      num_to_check = png_ptr->buffer_size;
+      num_to_check = png_rust_get_buffer_size(png_ptr->rust_ptr);
    }
 
    png_push_fill_buffer(png_ptr, &(info_ptr->signature[num_checked]),
@@ -157,7 +157,7 @@ png_push_read_sig(png_structrp png_ptr, png_inforp info_ptr)
    {
       if (png_rust_get_sig_bytes(png_ptr->rust_ptr) >= 8)
       {
-         png_ptr->process_mode = PNG_READ_CHUNK_MODE;
+         png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_CHUNK_MODE);
       }
    }
 }
@@ -183,12 +183,12 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
 
       PNG_PUSH_SAVE_BUFFER_IF_LT(8)
       png_push_fill_buffer(png_ptr, chunk_length, 4);
-      png_ptr->push_length = png_get_uint_31(png_ptr, chunk_length);
+      png_rust_set_push_length(png_ptr->rust_ptr, png_get_uint_31(png_ptr, chunk_length));
       png_reset_crc(png_ptr);
       png_crc_read(png_ptr, chunk_tag, 4);
       png_rust_set_chunk_name(png_ptr->rust_ptr, PNG_CHUNK_FROM_STRING(chunk_tag));
       png_check_chunk_name(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr));
-      png_check_chunk_length(png_ptr, png_ptr->push_length);
+      png_check_chunk_length(png_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
       png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
    }
 
@@ -210,11 +210,11 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
                ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE) )
          png_error(png_ptr, "Missing PLTE before IDAT");
 
-      png_ptr->process_mode = PNG_READ_IDAT_MODE;
+      png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_IDAT_MODE);
 
       if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT) &&
           ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT) &&
-          png_ptr->push_length == 0)
+          png_rust_get_push_length(png_ptr->rust_ptr) == 0)
          return;
 
       png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT);
@@ -225,19 +225,19 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
 
    if (chunk_name == png_IHDR)
    {
-      if (png_ptr->push_length != 13)
+      if (png_rust_get_push_length(png_ptr->rust_ptr) != 13)
          png_error(png_ptr, "Invalid IHDR length");
 
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_IHDR(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_IHDR(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
    else if (chunk_name == png_IEND)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_IEND(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_IEND(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
 
-      png_ptr->process_mode = PNG_READ_DONE_MODE;
+      png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_DONE_MODE);
       png_push_have_end(png_ptr, info_ptr);
    }
 
@@ -245,7 +245,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if ((keep = png_chunk_unknown_handling(png_ptr, chunk_name)) != 0)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_unknown(png_ptr, info_ptr, png_ptr->push_length, keep);
+      png_handle_unknown(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr), keep);
 
       if (chunk_name == png_PLTE)
          png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_PLTE);
@@ -255,13 +255,13 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_PLTE)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_PLTE(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_PLTE(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
    else if (chunk_name == png_IDAT)
    {
-      png_rust_set_idat_size(png_ptr->rust_ptr, png_ptr->push_length);
-      png_ptr->process_mode = PNG_READ_IDAT_MODE;
+      png_rust_set_idat_size(png_ptr->rust_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
+      png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_IDAT_MODE);
       png_push_have_info(png_ptr, info_ptr);
       png_ptr->zstream.avail_out =
           (uInt) PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr),
@@ -274,7 +274,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (png_rust_get_chunk_name(png_ptr->rust_ptr) == png_gAMA)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_gAMA(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_gAMA(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -282,7 +282,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (png_rust_get_chunk_name(png_ptr->rust_ptr) == png_sBIT)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_sBIT(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_sBIT(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -290,7 +290,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (png_rust_get_chunk_name(png_ptr->rust_ptr) == png_cHRM)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_cHRM(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_cHRM(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -298,7 +298,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_sRGB)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_sRGB(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_sRGB(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -306,7 +306,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (png_rust_get_chunk_name(png_ptr->rust_ptr) == png_iCCP)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_iCCP(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_iCCP(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -314,7 +314,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_sPLT)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_sPLT(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_sPLT(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -322,7 +322,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_tRNS)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_tRNS(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_tRNS(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -330,7 +330,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_bKGD)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_bKGD(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_bKGD(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -338,7 +338,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_hIST)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_hIST(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_hIST(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -346,7 +346,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_pHYs)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_pHYs(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_pHYs(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -354,7 +354,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_oFFs)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_oFFs(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_oFFs(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 #endif
 
@@ -362,7 +362,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_pCAL)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_pCAL(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_pCAL(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -370,7 +370,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_sCAL)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_sCAL(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_sCAL(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -378,7 +378,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_tIME)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_tIME(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_tIME(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -386,7 +386,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_tEXt)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_tEXt(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_tEXt(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -394,7 +394,7 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_zTXt)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_zTXt(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_zTXt(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
 #endif
@@ -402,14 +402,14 @@ png_push_read_chunk(png_structrp png_ptr, png_inforp info_ptr)
    else if (chunk_name == png_iTXt)
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_iTXt(png_ptr, info_ptr, png_ptr->push_length);
+      png_handle_iTXt(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 #endif
 
    else
    {
       PNG_PUSH_SAVE_BUFFER_IF_FULL
-      png_handle_unknown(png_ptr, info_ptr, png_ptr->push_length,
+      png_handle_unknown(png_ptr, info_ptr, png_rust_get_push_length(png_ptr->rust_ptr),
           PNG_HANDLE_CHUNK_AS_DEFAULT);
    }
 
@@ -425,108 +425,108 @@ png_push_fill_buffer(png_structp png_ptr, png_bytep buffer, size_t length)
       return;
 
    ptr = buffer;
-   if (png_ptr->save_buffer_size != 0)
+   if (png_rust_get_save_buffer_size(png_ptr->rust_ptr) != 0)
    {
       size_t save_size;
 
-      if (length < png_ptr->save_buffer_size)
+      if (length < png_rust_get_save_buffer_size(png_ptr->rust_ptr))
          save_size = length;
 
       else
-         save_size = png_ptr->save_buffer_size;
+         save_size = png_rust_get_save_buffer_size(png_ptr->rust_ptr);
 
-      memcpy(ptr, png_ptr->save_buffer_ptr, save_size);
+      memcpy(ptr, png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), save_size);
       length -= save_size;
       ptr += save_size;
-      png_ptr->buffer_size -= save_size;
-      png_ptr->save_buffer_size -= save_size;
-      png_ptr->save_buffer_ptr += save_size;
+      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_sub_save_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_add_save_buffer_ptr(png_ptr->rust_ptr, save_size);
    }
-   if (length != 0 && png_ptr->current_buffer_size != 0)
+   if (length != 0 && png_rust_get_current_buffer_size(png_ptr->rust_ptr) != 0)
    {
       size_t save_size;
 
-      if (length < png_ptr->current_buffer_size)
+      if (length < png_rust_get_current_buffer_size(png_ptr->rust_ptr))
          save_size = length;
 
       else
-         save_size = png_ptr->current_buffer_size;
+         save_size = png_rust_get_current_buffer_size(png_ptr->rust_ptr);
 
-      memcpy(ptr, png_ptr->current_buffer_ptr, save_size);
-      png_ptr->buffer_size -= save_size;
-      png_ptr->current_buffer_size -= save_size;
-      png_ptr->current_buffer_ptr += save_size;
+      memcpy(ptr, png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), save_size);
+      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_sub_current_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_add_current_buffer_ptr(png_ptr->rust_ptr, save_size);
    }
 }
 
 void /* PRIVATE */
 png_push_save_buffer(png_structrp png_ptr)
 {
-   if (png_ptr->save_buffer_size != 0)
+   if (png_rust_get_save_buffer_size(png_ptr->rust_ptr) != 0)
    {
-      if (png_ptr->save_buffer_ptr != png_ptr->save_buffer)
+      if (png_rust_get_save_buffer_ptr(png_ptr->rust_ptr) != png_rust_get_save_buffer(png_ptr->rust_ptr))
       {
          size_t i, istop;
          png_bytep sp;
          png_bytep dp;
 
-         istop = png_ptr->save_buffer_size;
-         for (i = 0, sp = png_ptr->save_buffer_ptr, dp = png_ptr->save_buffer;
+         istop = png_rust_get_save_buffer_size(png_ptr->rust_ptr);
+         for (i = 0, sp = png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), dp = png_rust_get_save_buffer(png_ptr->rust_ptr);
              i < istop; i++, sp++, dp++)
          {
             *dp = *sp;
          }
       }
    }
-   if (png_ptr->save_buffer_size + png_ptr->current_buffer_size >
-       png_ptr->save_buffer_max)
+   if (png_rust_get_save_buffer_size(png_ptr->rust_ptr) + png_rust_get_current_buffer_size(png_ptr->rust_ptr) >
+       png_rust_get_save_buffer_max(png_ptr->rust_ptr))
    {
       size_t new_max;
       png_bytep old_buffer;
 
-      if (png_ptr->save_buffer_size > PNG_SIZE_MAX -
-          (png_ptr->current_buffer_size + 256))
+      if (png_rust_get_save_buffer_size(png_ptr->rust_ptr) > PNG_SIZE_MAX -
+          (png_rust_get_current_buffer_size(png_ptr->rust_ptr) + 256))
       {
          png_error(png_ptr, "Potential overflow of save_buffer");
       }
 
-      new_max = png_ptr->save_buffer_size + png_ptr->current_buffer_size + 256;
-      old_buffer = png_ptr->save_buffer;
-      png_ptr->save_buffer = (png_bytep)png_malloc_warn(png_ptr,
-          (size_t)new_max);
+      new_max = png_rust_get_save_buffer_size(png_ptr->rust_ptr) + png_rust_get_current_buffer_size(png_ptr->rust_ptr) + 256;
+      old_buffer = png_rust_get_save_buffer(png_ptr->rust_ptr);
+      png_rust_set_save_buffer(png_ptr->rust_ptr, (png_bytep)png_malloc_warn(png_ptr,
+          (size_t)new_max));
 
-      if (png_ptr->save_buffer == NULL)
+      if (png_rust_get_save_buffer(png_ptr->rust_ptr) == NULL)
       {
          png_free(png_ptr, old_buffer);
          png_error(png_ptr, "Insufficient memory for save_buffer");
       }
 
       if (old_buffer)
-         memcpy(png_ptr->save_buffer, old_buffer, png_ptr->save_buffer_size);
-      else if (png_ptr->save_buffer_size)
+         memcpy(png_rust_get_save_buffer(png_ptr->rust_ptr), old_buffer, png_rust_get_save_buffer_size(png_ptr->rust_ptr));
+      else if (png_rust_get_save_buffer_size(png_ptr->rust_ptr))
          png_error(png_ptr, "save_buffer error");
       png_free(png_ptr, old_buffer);
-      png_ptr->save_buffer_max = new_max;
+      png_rust_set_save_buffer_max(png_ptr->rust_ptr, new_max);
    }
-   if (png_ptr->current_buffer_size)
+   if (png_rust_get_current_buffer_size(png_ptr->rust_ptr))
    {
-      memcpy(png_ptr->save_buffer + png_ptr->save_buffer_size,
-         png_ptr->current_buffer_ptr, png_ptr->current_buffer_size);
-      png_ptr->save_buffer_size += png_ptr->current_buffer_size;
-      png_ptr->current_buffer_size = 0;
+      memcpy(png_rust_get_save_buffer(png_ptr->rust_ptr) + png_rust_get_save_buffer_size(png_ptr->rust_ptr),
+         png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), png_rust_get_current_buffer_size(png_ptr->rust_ptr));
+      png_rust_add_save_buffer_size(png_ptr->rust_ptr, png_rust_get_current_buffer_size(png_ptr->rust_ptr));
+      png_rust_set_current_buffer_size(png_ptr->rust_ptr, 0);
    }
-   png_ptr->save_buffer_ptr = png_ptr->save_buffer;
-   png_ptr->buffer_size = 0;
+   png_rust_set_save_buffer_ptr(png_ptr->rust_ptr, png_rust_get_save_buffer(png_ptr->rust_ptr));
+   png_rust_set_buffer_size(png_ptr->rust_ptr, 0);
 }
 
 void /* PRIVATE */
 png_push_restore_buffer(png_structrp png_ptr, png_bytep buffer,
     size_t buffer_length)
 {
-   png_ptr->current_buffer = buffer;
-   png_ptr->current_buffer_size = buffer_length;
-   png_ptr->buffer_size = buffer_length + png_ptr->save_buffer_size;
-   png_ptr->current_buffer_ptr = png_ptr->current_buffer;
+   png_rust_set_current_buffer(png_ptr->rust_ptr, buffer);
+   png_rust_set_current_buffer_size(png_ptr->rust_ptr, buffer_length);
+   png_rust_set_buffer_size(png_ptr->rust_ptr, buffer_length + png_rust_get_save_buffer_size(png_ptr->rust_ptr));
+   png_rust_set_current_buffer_ptr(png_ptr->rust_ptr, png_rust_get_current_buffer(png_ptr->rust_ptr));
 }
 
 void /* PRIVATE */
@@ -540,7 +540,7 @@ png_push_read_IDAT(png_structrp png_ptr)
       /* TODO: this code can be commoned up with the same code in push_read */
       PNG_PUSH_SAVE_BUFFER_IF_LT(8)
       png_push_fill_buffer(png_ptr, chunk_length, 4);
-      png_ptr->push_length = png_get_uint_31(png_ptr, chunk_length);
+      png_rust_set_push_length(png_ptr->rust_ptr, png_get_uint_31(png_ptr, chunk_length));
       png_reset_crc(png_ptr);
       png_crc_read(png_ptr, chunk_tag, 4);
       png_rust_set_chunk_name(png_ptr->rust_ptr, PNG_CHUNK_FROM_STRING(chunk_tag));
@@ -548,7 +548,7 @@ png_push_read_IDAT(png_structrp png_ptr)
 
       if (png_rust_get_chunk_name(png_ptr->rust_ptr) != png_IDAT)
       {
-         png_ptr->process_mode = PNG_READ_CHUNK_MODE;
+         png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_CHUNK_MODE);
 
          if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
             png_error(png_ptr, "Not enough compressed data");
@@ -556,12 +556,12 @@ png_push_read_IDAT(png_structrp png_ptr)
          return;
       }
 
-      png_rust_set_idat_size(png_ptr->rust_ptr, png_ptr->push_length);
+      png_rust_set_idat_size(png_ptr->rust_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
    }
 
-   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_ptr->save_buffer_size != 0)
+   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_rust_get_save_buffer_size(png_ptr->rust_ptr) != 0)
    {
-      size_t save_size = png_ptr->save_buffer_size;
+      size_t save_size = png_rust_get_save_buffer_size(png_ptr->rust_ptr);
       png_uint_32 idat_size = png_rust_get_idat_size(png_ptr->rust_ptr);
 
       /* We want the smaller of 'idat_size' and 'current_buffer_size', but they
@@ -576,19 +576,19 @@ png_push_read_IDAT(png_structrp png_ptr)
       else
          idat_size = (png_uint_32)save_size;
 
-      png_calculate_crc(png_ptr, png_ptr->save_buffer_ptr, save_size);
+      png_calculate_crc(png_ptr, png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), save_size);
 
-      png_process_IDAT_data(png_ptr, png_ptr->save_buffer_ptr, save_size);
+      png_process_IDAT_data(png_ptr, png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), save_size);
 
       png_rust_sub_idat_size(png_ptr->rust_ptr, idat_size);
-      png_ptr->buffer_size -= save_size;
-      png_ptr->save_buffer_size -= save_size;
-      png_ptr->save_buffer_ptr += save_size;
+      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_sub_save_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_add_save_buffer_ptr(png_ptr->rust_ptr, save_size);
    }
 
-   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_ptr->current_buffer_size != 0)
+   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_rust_get_current_buffer_size(png_ptr->rust_ptr) != 0)
    {
-      size_t save_size = png_ptr->current_buffer_size;
+      size_t save_size = png_rust_get_current_buffer_size(png_ptr->rust_ptr);
       png_uint_32 idat_size = png_rust_get_idat_size(png_ptr->rust_ptr);
 
       /* We want the smaller of 'idat_size' and 'current_buffer_size', but they
@@ -602,14 +602,14 @@ png_push_read_IDAT(png_structrp png_ptr)
       else
          idat_size = (png_uint_32)save_size;
 
-      png_calculate_crc(png_ptr, png_ptr->current_buffer_ptr, save_size);
+      png_calculate_crc(png_ptr, png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), save_size);
 
-      png_process_IDAT_data(png_ptr, png_ptr->current_buffer_ptr, save_size);
+      png_process_IDAT_data(png_ptr, png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), save_size);
 
       png_rust_sub_idat_size(png_ptr->rust_ptr, idat_size);
-      png_ptr->buffer_size -= save_size;
-      png_ptr->current_buffer_size -= save_size;
-      png_ptr->current_buffer_ptr += save_size;
+      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_sub_current_buffer_size(png_ptr->rust_ptr, save_size);
+      png_rust_add_current_buffer_ptr(png_ptr->rust_ptr, save_size);
    }
 
    if (png_rust_get_idat_size(png_ptr->rust_ptr) == 0)
@@ -618,7 +618,7 @@ png_push_read_IDAT(png_structrp png_ptr)
       png_crc_finish(png_ptr, 0);
       png_rust_remove_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
       png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
-      png_ptr->zowner = 0;
+      png_rust_set_zowner(png_ptr->rust_ptr, 0);
    }
 }
 
@@ -674,7 +674,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
       {
          /* Terminate the decompression. */
          png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
-         png_ptr->zowner = 0;
+         png_rust_set_zowner(png_ptr->rust_ptr, 0);
 
          /* This may be a truncated stream (missing or
           * damaged end code).  Treat that as a warning.
@@ -708,7 +708,7 @@ png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
             /* Extra data. */
             png_warning(png_ptr, "Extra compressed data in IDAT");
             png_rust_add_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED);
-            png_ptr->zowner = 0;
+            png_rust_set_zowner(png_ptr->rust_ptr, 0);
 
             /* Do no more processing; skip the unprocessed
              * input check below.
@@ -1033,22 +1033,22 @@ png_read_push_finish_row(png_structrp png_ptr)
 void /* PRIVATE */
 png_push_have_info(png_structrp png_ptr, png_inforp info_ptr)
 {
-   if (png_ptr->info_fn != NULL)
-      (*(png_ptr->info_fn))(png_ptr, info_ptr);
+   if (png_rust_get_info_fn(png_ptr->rust_ptr) != NULL)
+      (*(png_rust_get_info_fn(png_ptr->rust_ptr)))(png_ptr, info_ptr);
 }
 
 void /* PRIVATE */
 png_push_have_end(png_structrp png_ptr, png_inforp info_ptr)
 {
-   if (png_ptr->end_fn != NULL)
-      (*(png_ptr->end_fn))(png_ptr, info_ptr);
+   if (png_rust_get_end_fn(png_ptr->rust_ptr) != NULL)
+      (*(png_rust_get_end_fn(png_ptr->rust_ptr)))(png_ptr, info_ptr);
 }
 
 void /* PRIVATE */
 png_push_have_row(png_structrp png_ptr, png_bytep row)
 {
-   if (png_ptr->row_fn != NULL)
-      (*(png_ptr->row_fn))(png_ptr, row, png_rust_get_row_number(png_ptr->rust_ptr),
+   if (png_rust_get_row_fn(png_ptr->rust_ptr) != NULL)
+      (*(png_rust_get_row_fn(png_ptr->rust_ptr)))(png_ptr, row, png_rust_get_row_number(png_ptr->rust_ptr),
           (int)png_rust_get_pass(png_ptr->rust_ptr));
 }
 
@@ -1077,9 +1077,9 @@ png_set_progressive_read_fn(png_structrp png_ptr, png_voidp progressive_ptr,
    if (png_ptr == NULL)
       return;
 
-   png_ptr->info_fn = info_fn;
-   png_ptr->row_fn = row_fn;
-   png_ptr->end_fn = end_fn;
+   png_rust_set_info_fn(png_ptr->rust_ptr, info_fn);
+   png_rust_set_row_fn(png_ptr->rust_ptr, row_fn);
+   png_rust_set_end_fn(png_ptr->rust_ptr, end_fn);
 
    png_set_read_fn(png_ptr, progressive_ptr, png_push_fill_buffer);
 }
@@ -1090,6 +1090,6 @@ png_get_progressive_ptr(png_const_structrp png_ptr)
    if (png_ptr == NULL)
       return (NULL);
 
-   return png_ptr->io_ptr;
+   return png_rust_get_io_ptr(png_ptr->rust_ptr);
 }
 #endif /* PROGRESSIVE_READ */

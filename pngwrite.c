@@ -2164,7 +2164,7 @@ static void (PNGCBAPI
 image_memory_write)(png_structp png_ptr, png_bytep/*const*/ data, size_t size)
 {
    png_image_write_control *display = png_voidcast(png_image_write_control*,
-       png_ptr->io_ptr/*backdoor: png_get_io_ptr(png_ptr)*/);
+       png_rust_get_io_ptr(png_ptr->rust_ptr)/*backdoor: png_get_io_ptr(png_ptr)*/);
    png_alloc_size_t ob = display->output_bytes;
 
    /* Check for overflow; this should never happen: */
@@ -2292,7 +2292,7 @@ png_image_write_to_stdio(png_imagep image, FILE *file, int convert_to_8bit,
              * than this and we haven't changed the standard IO functions so
              * this saves a 'safe' function.
              */
-            image->opaque->png_ptr->io_ptr = file;
+            png_rust_set_io_ptr(image->opaque->png_ptr->rust_ptr, file);
 
             memset(&display, 0, (sizeof display));
             display.image = image;

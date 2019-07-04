@@ -978,8 +978,8 @@ png_read_destroy(png_structrp png_ptr)
    inflateEnd(&png_ptr->zstream);
 
 #ifdef PNG_PROGRESSIVE_READ_SUPPORTED
-   png_free(png_ptr, png_ptr->save_buffer);
-   png_ptr->save_buffer = NULL;
+   png_free(png_ptr, png_rust_get_save_buffer(png_ptr->rust_ptr));
+   png_rust_set_save_buffer(png_ptr->rust_ptr, NULL);
 #endif
 
 #if defined(PNG_STORE_UNKNOWN_CHUNKS_SUPPORTED) && \
@@ -1480,7 +1480,7 @@ png_image_begin_read_from_stdio(png_imagep image, FILE* file)
              * than this and we haven't changed the standard IO functions so
              * this saves a 'safe' function.
              */
-            image->opaque->png_ptr->io_ptr = file;
+            png_rust_set_io_ptr(image->opaque->png_ptr->rust_ptr, file);
             return png_safe_execute(image, png_image_read_header, image);
          }
       }
@@ -1510,7 +1510,7 @@ png_image_begin_read_from_file(png_imagep image, const char *file_name)
          {
             if (png_image_read_init(image) != 0)
             {
-               image->opaque->png_ptr->io_ptr = fp;
+               png_rust_set_io_ptr(image->opaque->png_ptr->rust_ptr, fp);
                image->opaque->owned_file = 1;
                return png_safe_execute(image, png_image_read_header, image);
             }
@@ -1541,7 +1541,7 @@ png_image_memory_read(png_structp png_ptr, png_bytep out, size_t need)
 {
    if (png_ptr != NULL)
    {
-      png_imagep image = png_voidcast(png_imagep, png_ptr->io_ptr);
+      png_imagep image = png_voidcast(png_imagep, png_rust_get_io_ptr(png_ptr->rust_ptr));
       if (image != NULL)
       {
          png_controlp cp = image->opaque;
@@ -1581,7 +1581,7 @@ int PNGAPI png_image_begin_read_from_memory(png_imagep image,
              */
             image->opaque->memory = png_voidcast(png_const_bytep, memory);
             image->opaque->size = size;
-            image->opaque->png_ptr->io_ptr = image;
+            png_rust_set_io_ptr(image->opaque->png_ptr->rust_ptr, image);
             image->opaque->png_ptr->read_data_fn = png_image_memory_read;
 
             return png_safe_execute(image, png_image_read_header, image);

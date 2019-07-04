@@ -1,4 +1,3 @@
-
 /* pngrio.c - functions for data input
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -57,7 +56,7 @@ png_default_read_data(png_structp png_ptr, png_bytep data, size_t length)
    /* fread() returns 0 on error, so it is OK to store this in a size_t
     * instead of an int, which is what fread() actually returns.
     */
-   check = fread(data, 1, length, png_voidcast(png_FILE_p, png_ptr->io_ptr));
+   check = fread(data, 1, length, png_voidcast(png_FILE_p, png_rust_get_io_ptr(png_ptr->rust_ptr)));
 
    if (check != length)
       png_error(png_ptr, "Read Error");
@@ -90,7 +89,7 @@ png_set_read_fn(png_structrp png_ptr, png_voidp io_ptr,
    if (png_ptr == NULL)
       return;
 
-   png_ptr->io_ptr = io_ptr;
+   png_rust_set_io_ptr(png_ptr->rust_ptr, io_ptr);
 
 #ifdef PNG_STDIO_SUPPORTED
    if (read_data_fn != NULL)

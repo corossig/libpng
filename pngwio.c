@@ -1,4 +1,3 @@
-
 /* pngwio.c - functions for data output
  *
  * Copyright (c) 2018 Cosmin Truta
@@ -55,7 +54,7 @@ png_default_write_data(png_structp png_ptr, png_bytep data, size_t length)
    if (png_ptr == NULL)
       return;
 
-   check = fwrite(data, 1, length, (png_FILE_p)(png_ptr->io_ptr));
+   check = fwrite(data, 1, length, (png_FILE_p)(png_rust_get_io_ptr(png_ptr->rust_ptr)));
 
    if (check != length)
       png_error(png_ptr, "Write Error");
@@ -83,7 +82,7 @@ png_default_flush(png_structp png_ptr)
    if (png_ptr == NULL)
       return;
 
-   io_ptr = png_voidcast(png_FILE_p, (png_ptr->io_ptr));
+   io_ptr = png_voidcast(png_FILE_p, (png_rust_get_io_ptr(png_ptr->rust_ptr)));
    fflush(io_ptr);
 }
 #  endif
@@ -125,7 +124,7 @@ png_set_write_fn(png_structrp png_ptr, png_voidp io_ptr,
    if (png_ptr == NULL)
       return;
 
-   png_ptr->io_ptr = io_ptr;
+   png_rust_set_io_ptr(png_ptr->rust_ptr, io_ptr);
 
 #ifdef PNG_STDIO_SUPPORTED
    if (write_data_fn != NULL)

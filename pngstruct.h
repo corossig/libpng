@@ -157,7 +157,6 @@ struct png_struct_def
    png_voidp error_ptr;       /* user supplied struct for error functions */
    png_rw_ptr write_data_fn;  /* function for writing output data */
    png_rw_ptr read_data_fn;   /* function for reading input data */
-   png_voidp io_ptr;          /* ptr to application struct for I/O functions */
 
 #ifdef PNG_READ_USER_TRANSFORM_SUPPORTED
    png_user_transform_ptr read_user_transform_fn; /* user read transform */
@@ -177,7 +176,6 @@ struct png_struct_def
 #endif
 #endif
 
-   png_uint_32 zowner;        /* ID (chunk type) of zstream owner, 0 if none */
    z_stream    zstream;       /* decompression structure */
 
 #ifdef PNG_WRITE_SUPPORTED
@@ -263,24 +261,6 @@ struct png_struct_def
 
    png_read_status_ptr read_row_fn;   /* called after each row is decoded */
    png_write_status_ptr write_row_fn; /* called after each row is encoded */
-#ifdef PNG_PROGRESSIVE_READ_SUPPORTED
-   png_progressive_info_ptr info_fn; /* called after header data fully read */
-   png_progressive_row_ptr row_fn;   /* called after a prog. row is decoded */
-   png_progressive_end_ptr end_fn;   /* called after image is complete */
-   png_bytep save_buffer_ptr;        /* current location in save_buffer */
-   png_bytep save_buffer;            /* buffer for previously read data */
-   png_bytep current_buffer_ptr;     /* current location in current_buffer */
-   png_bytep current_buffer;         /* buffer for recently used data */
-   png_uint_32 push_length;          /* size of current input chunk */
-   png_uint_32 skip_length;          /* bytes to skip in input data */
-   size_t save_buffer_size;          /* amount of data now in save_buffer */
-   size_t save_buffer_max;           /* total size of save_buffer */
-   size_t buffer_size;               /* total amount of available input data */
-   size_t current_buffer_size;       /* amount of data now in current_buffer */
-   int process_mode;                 /* what push library is currently doing */
-   int cur_palette;                  /* current push library palette index */
-
-#endif /* PROGRESSIVE_READ */
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
    png_bytep palette_lookup; /* lookup table for quantizing */

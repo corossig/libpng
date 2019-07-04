@@ -688,7 +688,7 @@ png_get_io_ptr(png_const_structrp png_ptr)
    if (png_ptr == NULL)
       return (NULL);
 
-   return (png_ptr->io_ptr);
+   return (png_rust_get_io_ptr(png_ptr->rust_ptr));
 }
 
 #if defined(PNG_READ_SUPPORTED) || defined(PNG_WRITE_SUPPORTED)
@@ -707,7 +707,7 @@ png_init_io(png_structrp png_ptr, png_FILE_p fp)
    if (png_ptr == NULL)
       return;
 
-   png_ptr->io_ptr = (png_voidp)fp;
+   png_rust_set_io_ptr(png_ptr->rust_ptr, (png_voidp)fp);
 }
 #  endif
 
@@ -4535,13 +4535,13 @@ png_image_free_function(png_voidp argument)
 #  ifdef PNG_STDIO_SUPPORTED
       if (cp->owned_file != 0)
       {
-         FILE *fp = png_voidcast(FILE*, cp->png_ptr->io_ptr);
+         FILE *fp = png_voidcast(FILE*, png_rust_get_io_ptr(cp->png_ptr->rust_ptr));
          cp->owned_file = 0;
 
          /* Ignore errors here. */
          if (fp != NULL)
          {
-            cp->png_ptr->io_ptr = NULL;
+            png_rust_set_io_ptr(cp->png_ptr->rust_ptr, NULL);
             (void)fclose(fp);
          }
       }
