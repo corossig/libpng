@@ -1,4 +1,3 @@
-
 /* pngpriv.h - private declarations for use inside libpng
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -1584,7 +1583,7 @@ PNG_INTERNAL_FUNCTION(void,png_push_save_buffer,(png_structrp png_ptr),
     PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_push_restore_buffer,(png_structrp png_ptr,
     png_bytep buffer, size_t buffer_length),PNG_EMPTY);
-PNG_INTERNAL_FUNCTION(void,png_push_read_IDAT,(png_structrp png_ptr),PNG_EMPTY);
+PNG_INTERNAL_FUNCTION(void,png_push_read_IDAT,(PngRust* png_rust),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_process_IDAT_data,(png_structrp png_ptr,
     png_bytep buffer, size_t buffer_length),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_push_process_row,(png_structrp png_ptr),
@@ -1601,7 +1600,7 @@ PNG_INTERNAL_FUNCTION(void,png_push_read_end,(png_structrp png_ptr,
     png_inforp info_ptr),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_process_some_data,(png_structrp png_ptr,
     png_inforp info_ptr),PNG_EMPTY);
-PNG_INTERNAL_FUNCTION(void,png_read_push_finish_row,(png_structrp png_ptr),
+PNG_INTERNAL_FUNCTION(void,png_read_push_finish_row,(PngRust* png_rust),
     PNG_EMPTY);
 #  ifdef PNG_READ_tEXt_SUPPORTED
 PNG_INTERNAL_FUNCTION(void,png_push_handle_tEXt,(png_structrp png_ptr,

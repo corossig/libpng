@@ -1,6 +1,12 @@
 #[macro_use]
 extern crate bitflags;
 
+#[macro_use]
+extern crate enum_primitive_derive;
+use num_traits::{FromPrimitive,ToPrimitive};
+
+mod pread;
+
 enum PngInterlace {
     ADAM7,
 }
@@ -22,7 +28,7 @@ bitflags! {
 
 
 bitflags! {
-    struct PngFlags: u32 {
+    pub struct PngFlags: u32 {
         const ZLIB_CUSTOM_STRATEGY  = 0x1;
         const ZSTREAM_INITIALIZED   = 0x2;
         /* 0x0004    unused */
@@ -31,27 +37,27 @@ bitflags! {
         /* 0x0020    unused */
         const ROW_INIT              = 0x40;
         const FILLER_AFTER          = 0x80;
-        const CRC_ANCILLARY_USE     = 0x100;
-        const CRC_ANCILLARY_NOWARN  = 0x200;
-        const CRC_CRITICAL_USE      = 0x400;
-        const CRC_CRITICAL_IGNORE   = 0x800;
-        const ASSUME_S_RGB          = 0x1000;
-        const OPTIMIZE_ALPHA        = 0x2000;
-        const DETECT_UNINITIALIZED  = 0x4000;
-        /* const KEEP_UNKNOWN_CHUNKS  = 0x8000; */
-        /* const KEEP_UNSAFE_CHUNKS   = 0x10000; */
-        const LIBRARY_MISMATCH      = 0x20000;
-        const STRIP_ERROR_NUMBERS   = 0x40000;
-        const STRIP_ERROR_TEXT      = 0x80000;
-        const BENIGN_ERRORS_WARN    = 0x100000;
-        const APP_WARNINGS_WARN     = 0x200000;
-        const APP_ERRORS_WARN       = 0x400000;
+        const CRC_ANCILLARY_USE     = 0x1_00;
+        const CRC_ANCILLARY_NOWARN  = 0x2_00;
+        const CRC_CRITICAL_USE      = 0x4_00;
+        const CRC_CRITICAL_IGNORE   = 0x8_00;
+        const ASSUME_S_RGB          = 0x10_00;
+        const OPTIMIZE_ALPHA        = 0x20_00;
+        const DETECT_UNINITIALIZED  = 0x40_00;
+        /* const KEEP_UNKNOWN_CHUNKS  = 0x80_00; */
+        /* const KEEP_UNSAFE_CHUNKS   = 0x1_00_00; */
+        const LIBRARY_MISMATCH      = 0x2_00_00;
+        const STRIP_ERROR_NUMBERS   = 0x4_00_00;
+        const STRIP_ERROR_TEXT      = 0x8_00_00;
+        const BENIGN_ERRORS_WARN    = 0x10_00_00;
+        const APP_WARNINGS_WARN     = 0x20_00_00;
+        const APP_ERRORS_WARN       = 0x40_00_00;
     }
 }
 
 
 bitflags! {
-    struct PngMode: u32 {
+    pub struct PngMode: u32 {
         const HAVE_IHDR           = 0x01;
         const HAVE_PLTE           = 0x02;
         const HAVE_IDAT           = 0x04;
@@ -64,44 +70,44 @@ bitflags! {
         const WROTE_T_IME            = 0x200;
         const WROTE_INFO_BEFORE_PLTE = 0x400;
         const BACKGROUND_IS_GRAY     = 0x800;
-        const HAVE_PNG_SIGNATURE     = 0x1000;
-        const HAVE_CHUNK_AFTER_IDAT  = 0x2000; /* Have another chunk after IDAT */
+        const HAVE_PNG_SIGNATURE     = 0x10_00;
+        const HAVE_CHUNK_AFTER_IDAT  = 0x20_00; /* Have another chunk after IDAT */
         /* 0x4000; (unused) */
-        const IS_READ_STRUCT         = 0x8000; /* Else is a write struct */
+        const IS_READ_STRUCT         = 0x80_00; /* Else is a write struct */
     }
 }
 
 
 bitflags! {
-    struct PngTransformations: u32 {
-        const BGR                = 0x0001;
-        const INTERLACE          = 0x0002;
-        const PACK               = 0x0004;
-        const SHIFT              = 0x0008;
-        const SWAP_BYTES         = 0x0010;
-        const INVERT_MONO        = 0x0020;
-        const QUANTIZE           = 0x0040;
-        const COMPOSE            = 0x0080;    /* Was PNG_BACKGROUND */
-        const BACKGROUND_EXPAND  = 0x0100;
-        const EXPAND_16          = 0x0200;    /* Added to libpng 1.5.2 */
-        const T_16_TO_8          = 0x0400;    /* Becomes 'chop' in 1.5.4 */
-        const RGBA               = 0x0800;
-        const EXPAND             = 0x1000;
-        const GAMMA              = 0x2000;
-        const GRAY_TO_RGB        = 0x4000;
-        const FILLER             = 0x8000;
-        const PACKSWAP           = 0x10000;
-        const SWAP_ALPHA         = 0x20000;
-        const STRIP_ALPHA        = 0x40000;
-        const INVERT_ALPHA       = 0x80000;
-        const USER_TRANSFORM     = 0x100000;
-        const RGB_TO_GRAY_ERR    = 0x200000;
-        const RGB_TO_GRAY_WARN   = 0x400000;
-        const RGB_TO_GRAY        = 0x600000; /* two bits, RGB_TO_GRAY_ERR|WARN */
-        const ENCODE_ALPHA       = 0x800000;
-        const ADD_ALPHA          = 0x1000000;
-        const EXPAND_T_RNS       = 0x2000000;
-        const SCALE_16_TO_8      = 0x4000000;
+    pub struct PngTransformations: u32 {
+        const BGR                = 0x1;
+        const INTERLACE          = 0x2;
+        const PACK               = 0x4;
+        const SHIFT              = 0x8;
+        const SWAP_BYTES         = 0x10;
+        const INVERT_MONO        = 0x20;
+        const QUANTIZE           = 0x40;
+        const COMPOSE            = 0x80;    /* Was PNG_BACKGROUND */
+        const BACKGROUND_EXPAND  = 0x1_00;
+        const EXPAND_16          = 0x2_00;    /* Added to libpng 1.5.2 */
+        const T_16_TO_8          = 0x4_00;    /* Becomes 'chop' in 1.5.4 */
+        const RGBA               = 0x8_00;
+        const EXPAND             = 0x10_00;
+        const GAMMA              = 0x20_00;
+        const GRAY_TO_RGB        = 0x40_00;
+        const FILLER             = 0x80_00;
+        const PACKSWAP           = 0x1_00_00;
+        const SWAP_ALPHA         = 0x2_00_00;
+        const STRIP_ALPHA        = 0x4_00_00;
+        const INVERT_ALPHA       = 0x8_00_00;
+        const USER_TRANSFORM     = 0x10_00_00;
+        const RGB_TO_GRAY_ERR    = 0x20_00_00;
+        const RGB_TO_GRAY_WARN   = 0x40_00_00;
+        const RGB_TO_GRAY        = 0x60_00_00; /* two bits, RGB_TO_GRAY_ERR|WARN */
+        const ENCODE_ALPHA       = 0x80_00_00;
+        const ADD_ALPHA          = 0x1_00_00_00;
+        const EXPAND_T_RNS       = 0x2_00_00_00;
+        const SCALE_16_TO_8      = 0x4_00_00_00;
                        /* 0x8000000 unused */
                        /* 0x10000000 unused */
                        /* 0x20000000 unused */
@@ -111,7 +117,7 @@ bitflags! {
 
 
 bitflags! {
-    struct PngFilter: u8 {
+    pub struct PngFilter: u8 {
         const NONE            = 0x08;
         const SUB             = 0x10;
         const UP              = 0x20;
@@ -121,8 +127,58 @@ bitflags! {
     }
 }
 
+/* TODO : Transform it into regular enum when no more C code depends on it */
+#[derive(Debug, PartialEq, Primitive)]
+#[repr(i32)]
+enum PngPushMode {
+    ReadSig   = 0,
+    ReadChunk = 1,
+    ReadIDAT  = 2,
+    ReadtEXt  = 4,
+    ReadzTXt  = 5,
+    ReadDONE  = 6,
+    ReadiTXt  = 7,
+    Error     = 8,
+}
+
+#[allow(non_camel_case_types)] 
+#[derive(Debug, PartialEq, Primitive)]
+#[repr(u32)]
+enum PngChunkType {
+    NULL = 0,
+    IDAT = 0x49_44_41_54,
+    IEND = 0x49_45_4E_44,
+    IHDR = 0x49_48_44_52,
+    PLTE = 0x50_4C_54_45,
+    bKGD = 0x62_4B_47_44,
+    cHRM = 0x63_48_52_4D,
+    eXIf = 0x65_58_49_66, /* registered July 2017 */
+    fRAc = 0x66_52_41_63, /* registered, not defined */
+    gAMA = 0x67_41_4D_41,
+    gIFg = 0x67_49_46_67,
+    gIFt = 0x67_49_46_74, /* deprecated */
+    gIFx = 0x67_49_46_78,
+    hIST = 0x68_49_53_54,
+    iCCP = 0x69_43_43_50,
+    iTXt = 0x69_54_58_74,
+    oFFs = 0x6F_46_46_73,
+    pCAL = 0x70_43_41_4C,
+    pHYs = 0x70_48_59_73,
+    sBIT = 0x73_42_49_54,
+    sCAL = 0x73_43_41_4C,
+    sPLT = 0x73_50_4C_54,
+    sRGB = 0x73_52_47_42,
+    sTER = 0x73_54_45_52,
+    tEXt = 0x74_45_58_74,
+    tIME = 0x74_49_4D_45,
+    tRNS = 0x74_52_4E_53,
+    vpAg = 0x76_70_41_67,
+    zTXt = 0x7a_54_58_74,
+}
 
 pub struct Png {
+    png_ptr: CPtr,        /* Pointer to C structure */
+
     mode: PngMode,        /* tells us where we are in the PNG file */
     flags: PngFlags,      /* flags indicating various things to libpng */
     transformations: PngTransformations, /* which transformations to perform */
@@ -148,7 +204,7 @@ pub struct Png {
     rowbytes: usize,      /* size of row in bytes */
     iwidth: u32,          /* width of current interlaced row in pixels */
     row_number: u32,      /* current row in interlace pass */
-    chunk_name: u32,      /* PNG_CHUNK() id of current chunk */
+    chunk_name: PngChunkType, /* PNG_CHUNK() id of current chunk */
     prev_row: CPtr,       /* buffer to save previous (unfiltered) row.
                            * While reading this is a pointer into
                            * big_prev_row; while writing it is separately
@@ -193,7 +249,7 @@ pub struct Png {
     save_buffer_max: usize,     /* total size of save_buffer */
     buffer_size: usize,         /* total amount of available input data */
     current_buffer_size: usize, /* amount of data now in current_buffer */
-    process_mode: i32,          /* what push library is currently doing */
+    process_mode: PngPushMode,  /* what push library is currently doing */
     cur_palette: i32,           /* current push library palette index */
     zowner: u32,                /* ID (chunk type) of zstream owner, 0 if none */
     io_ptr: CPtr,               /* ptr to application struct for I/O functions */
@@ -211,6 +267,7 @@ impl Drop for Png {
 pub extern fn png_rust_new() -> *mut Png
 {
     let obj = Box::new(Png {
+        png_ptr: 0,
         mode: PngMode::empty(),
         flags: PngFlags::empty(),
         transformations: PngTransformations::empty(),
@@ -232,7 +289,7 @@ pub extern fn png_rust_new() -> *mut Png
         rowbytes: 0,
         iwidth: 0,
         row_number: 0,
-        chunk_name: 0,
+        chunk_name: PngChunkType::NULL,
         prev_row: 0,
         row_buf: 0,
         try_row: 0,
@@ -260,7 +317,7 @@ pub extern fn png_rust_new() -> *mut Png
         save_buffer_max: 0,
         buffer_size: 0,
         current_buffer_size: 0,
-        process_mode: 0,
+        process_mode: PngPushMode::ReadSig,
         cur_palette: 0,
         zowner: 0,
         io_ptr: 0,
@@ -272,6 +329,12 @@ pub extern fn png_rust_new() -> *mut Png
 pub unsafe extern fn png_rust_free(this: *mut Png)
 {
     Box::from_raw(this);
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_png_ptr(this: *mut Png, png_ptr: CPtr)
+{
+    this.as_mut().unwrap().png_ptr = png_ptr;
 }
 
 #[no_mangle]
@@ -308,7 +371,7 @@ pub unsafe extern fn png_rust_get_interlace(this: *const Png) -> i32
 #[no_mangle]
 pub unsafe extern fn png_rust_set_interlace(this: *mut Png, value: i32)
 {
-    let interlace = match value {
+    this.as_mut().unwrap().interlaced = match value {
         0 => None,
         1 => Some(PngInterlace::ADAM7),
         _ => {
@@ -316,8 +379,6 @@ pub unsafe extern fn png_rust_set_interlace(this: *mut Png, value: i32)
             None
         }
     };
-
-    this.as_mut().unwrap().interlaced = interlace;
 }
 
 
@@ -489,6 +550,48 @@ pub unsafe extern fn png_rust_is_color_type(this: *const Png, color_type: u8) ->
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
+pub unsafe extern fn png_rust_get_process_mode(this: *const Png) -> i32
+{
+    this.as_ref().unwrap().process_mode.to_i32().unwrap()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_process_mode(this: *mut Png, mode: i32)
+{
+    this.as_mut().unwrap().process_mode = match PngPushMode::from_i32(mode) {
+        Some(mode) => mode,
+        None => {
+            println!("Got an error");
+            /* TODO : Check if we need to add an Unknown value */
+            PngPushMode::Error
+        },
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_chunk_name(this: *const Png) -> u32
+{
+    this.as_ref().unwrap().chunk_name.to_u32().unwrap()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_chunk_name(this: *mut Png, name: u32)
+{
+    this.as_mut().unwrap().chunk_name = match PngChunkType::from_u32(name) {
+        Some(name) => name,
+        None => {
+            /* TODO : Check if we need to add an Unknown value or error */
+            PngChunkType::IEND
+        },
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+
+#[no_mangle]
 pub unsafe extern fn png_rust_get_do_filter(this: *const Png) -> u8
 {
     this.as_ref().unwrap().do_filter.bits()
@@ -598,7 +701,6 @@ get_set!(usr_width,      u32);
 get_set!(rowbytes,       usize);
 get_set!(iwidth,         u32);
 get_set!(row_number,     u32);
-get_set!(chunk_name,     u32);
 get_set!(prev_row,       CPtr);
 get_set!(row_buf,        CPtr);
 get_set!(try_row,        CPtr);
@@ -626,7 +728,6 @@ get_set!(save_buffer_size,        usize);
 get_set!(save_buffer_max,         usize);
 get_set!(buffer_size,             usize);
 get_set!(current_buffer_size,     usize);
-get_set!(process_mode,   i32);
 get_set!(cur_palette,    i32);
 get_set!(zowner,         u32);
 get_set!(io_ptr,         CPtr);

@@ -261,7 +261,6 @@ png_create_png_struct,(png_const_charp user_png_ver, png_voidp error_ptr,
    memset(&create_struct, 0, (sizeof create_struct));
 
    create_struct.rust_ptr = png_rust_new();
-
    /* Added at libpng-1.2.6 */
 #  ifdef PNG_USER_LIMITS_SUPPORTED
       create_struct.user_width_max = PNG_USER_WIDTH_MAX;
@@ -321,6 +320,8 @@ png_create_png_struct,(png_const_charp user_png_ver, png_voidp error_ptr,
 
             if (png_ptr != NULL)
             {
+               png_rust_set_png_ptr(create_struct.rust_ptr, png_ptr);
+
                /* png_ptr->zstream holds a back-pointer to the png_struct, so
                 * this can only be done now:
                 */

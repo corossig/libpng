@@ -47,7 +47,7 @@ png_create_read_struct_2,(png_const_charp user_png_ver, png_voidp error_ptr,
 
    if (png_ptr != NULL)
    {
-      png_rust_add_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT);
+      png_rust_set_mode(png_ptr->rust_ptr, PNG_IS_READ_STRUCT);
 
       /* Added in libpng-1.6.0; this can be used to detect a read structure if
        * required (it will be zero in a write structure.)
@@ -828,7 +828,7 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
           * upon to read the Adler32 at the end.  If it doesn't ignore IDAT
           * chunks which are longer than zero as well:
           */
-         if ((length > 0 && png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
+         if ((length > 0 && ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
              || png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT))
             png_benign_error(png_ptr, "..Too many IDATs found");
 

@@ -111,7 +111,7 @@ png_process_some_data(png_structrp png_ptr, png_inforp info_ptr)
 
       case PNG_READ_IDAT_MODE:
       {
-         png_push_read_IDAT(png_ptr);
+         png_push_read_IDAT(png_ptr->rust_ptr);
          break;
       }
 
@@ -529,98 +529,6 @@ png_push_restore_buffer(png_structrp png_ptr, png_bytep buffer,
    png_rust_set_current_buffer_ptr(png_ptr->rust_ptr, png_rust_get_current_buffer(png_ptr->rust_ptr));
 }
 
-void /* PRIVATE */
-png_push_read_IDAT(png_structrp png_ptr)
-{
-   if ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER))
-   {
-      png_byte chunk_length[4];
-      png_byte chunk_tag[4];
-
-      /* TODO: this code can be commoned up with the same code in push_read */
-      PNG_PUSH_SAVE_BUFFER_IF_LT(8)
-      png_push_fill_buffer(png_ptr, chunk_length, 4);
-      png_rust_set_push_length(png_ptr->rust_ptr, png_get_uint_31(png_ptr, chunk_length));
-      png_reset_crc(png_ptr);
-      png_crc_read(png_ptr, chunk_tag, 4);
-      png_rust_set_chunk_name(png_ptr->rust_ptr, PNG_CHUNK_FROM_STRING(chunk_tag));
-      png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
-
-      if (png_rust_get_chunk_name(png_ptr->rust_ptr) != png_IDAT)
-      {
-         png_rust_set_process_mode(png_ptr->rust_ptr, PNG_READ_CHUNK_MODE);
-
-         if ( ! png_rust_has_flags(png_ptr->rust_ptr, PNG_FLAG_ZSTREAM_ENDED))
-            png_error(png_ptr, "Not enough compressed data");
-
-         return;
-      }
-
-      png_rust_set_idat_size(png_ptr->rust_ptr, png_rust_get_push_length(png_ptr->rust_ptr));
-   }
-
-   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_rust_get_save_buffer_size(png_ptr->rust_ptr) != 0)
-   {
-      size_t save_size = png_rust_get_save_buffer_size(png_ptr->rust_ptr);
-      png_uint_32 idat_size = png_rust_get_idat_size(png_ptr->rust_ptr);
-
-      /* We want the smaller of 'idat_size' and 'current_buffer_size', but they
-       * are of different types and we don't know which variable has the fewest
-       * bits.  Carefully select the smaller and cast it to the type of the
-       * larger - this cannot overflow.  Do not cast in the following test - it
-       * will break on either 16-bit or 64-bit platforms.
-       */
-      if (idat_size < save_size)
-         save_size = (size_t)idat_size;
-
-      else
-         idat_size = (png_uint_32)save_size;
-
-      png_calculate_crc(png_ptr, png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), save_size);
-
-      png_process_IDAT_data(png_ptr, png_rust_get_save_buffer_ptr(png_ptr->rust_ptr), save_size);
-
-      png_rust_sub_idat_size(png_ptr->rust_ptr, idat_size);
-      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
-      png_rust_sub_save_buffer_size(png_ptr->rust_ptr, save_size);
-      png_rust_add_save_buffer_ptr(png_ptr->rust_ptr, save_size);
-   }
-
-   if (png_rust_get_idat_size(png_ptr->rust_ptr) != 0 && png_rust_get_current_buffer_size(png_ptr->rust_ptr) != 0)
-   {
-      size_t save_size = png_rust_get_current_buffer_size(png_ptr->rust_ptr);
-      png_uint_32 idat_size = png_rust_get_idat_size(png_ptr->rust_ptr);
-
-      /* We want the smaller of 'idat_size' and 'current_buffer_size', but they
-       * are of different types and we don't know which variable has the fewest
-       * bits.  Carefully select the smaller and cast it to the type of the
-       * larger - this cannot overflow.
-       */
-      if (idat_size < save_size)
-         save_size = (size_t)idat_size;
-
-      else
-         idat_size = (png_uint_32)save_size;
-
-      png_calculate_crc(png_ptr, png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), save_size);
-
-      png_process_IDAT_data(png_ptr, png_rust_get_current_buffer_ptr(png_ptr->rust_ptr), save_size);
-
-      png_rust_sub_idat_size(png_ptr->rust_ptr, idat_size);
-      png_rust_sub_buffer_size(png_ptr->rust_ptr, save_size);
-      png_rust_sub_current_buffer_size(png_ptr->rust_ptr, save_size);
-      png_rust_add_current_buffer_ptr(png_ptr->rust_ptr, save_size);
-   }
-
-   if (png_rust_get_idat_size(png_ptr->rust_ptr) == 0)
-   {
-      PNG_PUSH_SAVE_BUFFER_IF_LT(4)
-      png_crc_finish(png_ptr, 0);
-      png_rust_remove_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_HEADER);
-      png_rust_add_mode(png_ptr->rust_ptr, PNG_AFTER_IDAT);
-      png_rust_set_zowner(png_ptr->rust_ptr, 0);
-   }
-}
 
 void /* PRIVATE */
 png_process_IDAT_data(png_structrp png_ptr, png_bytep buffer,
@@ -797,7 +705,7 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 8 && png_rust_get_pass(png_ptr->rust_ptr) == 0; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr); /* Updates png_ptr->pass */
+               png_read_push_finish_row(png_ptr->rust_ptr); /* Updates png_ptr->pass */
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 2) /* Pass 1 might be empty */
@@ -805,7 +713,7 @@ png_push_process_row(png_structrp png_ptr)
                for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
                {
                   png_push_have_row(png_ptr, NULL);
-                  png_read_push_finish_row(png_ptr);
+                  png_read_push_finish_row(png_ptr->rust_ptr);
                }
             }
 
@@ -814,14 +722,14 @@ png_push_process_row(png_structrp png_ptr)
                for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
-                  png_read_push_finish_row(png_ptr);
+                  png_read_push_finish_row(png_ptr->rust_ptr);
                }
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 6 && png_rust_get_height(png_ptr->rust_ptr) <= 4)
             {
                 png_push_have_row(png_ptr, NULL);
-                png_read_push_finish_row(png_ptr);
+                png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             break;
@@ -833,7 +741,7 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 8 && png_rust_get_pass(png_ptr->rust_ptr) == 1; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 2) /* Skip top 4 generated rows */
@@ -841,7 +749,7 @@ png_push_process_row(png_structrp png_ptr)
                for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
                {
                   png_push_have_row(png_ptr, NULL);
-                  png_read_push_finish_row(png_ptr);
+                  png_read_push_finish_row(png_ptr->rust_ptr);
                }
             }
 
@@ -855,13 +763,13 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 2; i++)
             {
                png_push_have_row(png_ptr, NULL);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 4) /* Pass 3 might be empty */
@@ -869,7 +777,7 @@ png_push_process_row(png_structrp png_ptr)
                for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
-                  png_read_push_finish_row(png_ptr);
+                  png_read_push_finish_row(png_ptr->rust_ptr);
                }
             }
 
@@ -883,7 +791,7 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 4 && png_rust_get_pass(png_ptr->rust_ptr) == 3; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 4) /* Skip top two generated rows */
@@ -891,7 +799,7 @@ png_push_process_row(png_structrp png_ptr)
                for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
                {
                   png_push_have_row(png_ptr, NULL);
-                  png_read_push_finish_row(png_ptr);
+                  png_read_push_finish_row(png_ptr->rust_ptr);
                }
             }
 
@@ -905,19 +813,19 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 4; i++)
             {
                png_push_have_row(png_ptr, NULL);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 6) /* Pass 5 might be empty */
             {
                png_push_have_row(png_ptr, NULL);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             break;
@@ -930,13 +838,13 @@ png_push_process_row(png_structrp png_ptr)
             for (i = 0; i < 2 && png_rust_get_pass(png_ptr->rust_ptr) == 5; i++)
             {
                png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             if (png_rust_get_pass(png_ptr->rust_ptr) == 6) /* Skip top generated row */
             {
                png_push_have_row(png_ptr, NULL);
-               png_read_push_finish_row(png_ptr);
+               png_read_push_finish_row(png_ptr->rust_ptr);
             }
 
             break;
@@ -946,13 +854,13 @@ png_push_process_row(png_structrp png_ptr)
          case 6:
          {
             png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-            png_read_push_finish_row(png_ptr);
+            png_read_push_finish_row(png_ptr->rust_ptr);
 
             if (png_rust_get_pass(png_ptr->rust_ptr) != 6)
                break;
 
             png_push_have_row(png_ptr, NULL);
-            png_read_push_finish_row(png_ptr);
+            png_read_push_finish_row(png_ptr->rust_ptr);
          }
       }
    }
@@ -960,74 +868,8 @@ png_push_process_row(png_structrp png_ptr)
 #endif
    {
       png_push_have_row(png_ptr, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
-      png_read_push_finish_row(png_ptr);
+      png_read_push_finish_row(png_ptr->rust_ptr);
    }
-}
-
-void /* PRIVATE */
-png_read_push_finish_row(png_structrp png_ptr)
-{
-#ifdef PNG_READ_INTERLACING_SUPPORTED
-   /* Arrays to facilitate easy interlacing - use pass (0 - 6) as index */
-
-   /* Start of interlace block */
-   static const png_byte png_pass_start[] = {0, 4, 0, 2, 0, 1, 0};
-
-   /* Offset to next interlace block */
-   static const png_byte png_pass_inc[] = {8, 8, 4, 4, 2, 2, 1};
-
-   /* Start of interlace block in the y direction */
-   static const png_byte png_pass_ystart[] = {0, 0, 4, 0, 2, 0, 1};
-
-   /* Offset to next interlace block in the y direction */
-   static const png_byte png_pass_yinc[] = {8, 8, 8, 4, 4, 2, 2};
-
-   /* Height of interlace block.  This is not currently used - if you need
-    * it, uncomment it here and in png.h
-   static const png_byte png_pass_height[] = {8, 8, 4, 4, 2, 2, 1};
-   */
-#endif
-
-   png_rust_incr_row_number(png_ptr->rust_ptr);
-   if (png_rust_get_row_number(png_ptr->rust_ptr) < png_rust_get_num_rows(png_ptr->rust_ptr))
-      return;
-
-#ifdef PNG_READ_INTERLACING_SUPPORTED
-   if (png_rust_get_interlace(png_ptr->rust_ptr) != 0)
-   {
-      png_rust_set_row_number(png_ptr->rust_ptr, 0);
-      memset(png_rust_get_prev_row(png_ptr->rust_ptr), 0, png_rust_get_rowbytes(png_ptr->rust_ptr) + 1);
-
-      do
-      {
-         png_rust_incr_pass(png_ptr->rust_ptr);
-         if ((png_rust_get_pass(png_ptr->rust_ptr) == 1 && png_rust_get_width(png_ptr->rust_ptr) < 5) ||
-             (png_rust_get_pass(png_ptr->rust_ptr) == 3 && png_rust_get_width(png_ptr->rust_ptr) < 3) ||
-             (png_rust_get_pass(png_ptr->rust_ptr) == 5 && png_rust_get_width(png_ptr->rust_ptr) < 2))
-            png_rust_incr_pass(png_ptr->rust_ptr);
-
-         if (png_rust_get_pass(png_ptr->rust_ptr) > 7)
-            png_rust_decr_pass(png_ptr->rust_ptr);
-
-         if (png_rust_get_pass(png_ptr->rust_ptr) >= 7)
-            break;
-
-         png_rust_set_iwidth(png_ptr->rust_ptr, (png_rust_get_width(png_ptr->rust_ptr) +
-             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
-             png_pass_start[png_rust_get_pass(png_ptr->rust_ptr)]) /
-             png_pass_inc[png_rust_get_pass(png_ptr->rust_ptr)]);
-
-         if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INTERLACE))
-            break;
-
-         png_rust_set_num_rows(png_ptr->rust_ptr, (png_rust_get_height(png_ptr->rust_ptr) +
-             png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)] - 1 -
-             png_pass_ystart[png_rust_get_pass(png_ptr->rust_ptr)]) /
-             png_pass_yinc[png_rust_get_pass(png_ptr->rust_ptr)]);
-
-      } while (png_rust_get_iwidth(png_ptr->rust_ptr) == 0 || png_rust_get_num_rows(png_ptr->rust_ptr) == 0);
-   }
-#endif /* READ_INTERLACING */
 }
 
 void /* PRIVATE */

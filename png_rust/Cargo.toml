@@ -13,3 +13,6 @@ crate-type = ["staticlib", "rlib"]
 crc = "1.8.1"
 bitflags = "1.1.0"
 paste = "0.1"
+enum-primitive-derive = "0.1.2"
+num-traits = "0.2.8"
+num_enum = "0.2.3"
