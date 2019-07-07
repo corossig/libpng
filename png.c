@@ -370,7 +370,10 @@ png_create_info_struct,(png_const_structrp png_ptr),PNG_ALLOCATED)
        (sizeof *info_ptr)));
 
    if (info_ptr != NULL)
+   {
       memset(info_ptr, 0, (sizeof *info_ptr));
+      info_ptr->rust_ptr = png_info_rust_new(info_ptr);
+   }
 
    return info_ptr;
 }
@@ -479,26 +482,26 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
 
 #ifdef PNG_TEXT_SUPPORTED
    /* Free text item num or (if num == -1) all text items */
-   if (info_ptr->text != NULL &&
+   if (png_info_rust_get_text(info_ptr->rust_ptr) != NULL &&
        ((mask & PNG_FREE_TEXT) & info_ptr->free_me) != 0)
    {
       if (num != -1)
       {
-         png_free(png_ptr, info_ptr->text[num].key);
-         info_ptr->text[num].key = NULL;
+         png_free(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[num].key);
+         png_info_rust_get_text(info_ptr->rust_ptr)[num].key = NULL;
       }
 
       else
       {
          int i;
 
-         for (i = 0; i < info_ptr->num_text; i++)
-            png_free(png_ptr, info_ptr->text[i].key);
+         for (i = 0; i < png_info_rust_get_num_text(info_ptr->rust_ptr); i++)
+            png_free(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[i].key);
 
-         png_free(png_ptr, info_ptr->text);
-         info_ptr->text = NULL;
-         info_ptr->num_text = 0;
-         info_ptr->max_text = 0;
+         png_free(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr));
+         png_info_rust_set_text(info_ptr->rust_ptr, NULL);
+         png_info_rust_set_num_text(info_ptr->rust_ptr, 0);
+         png_info_rust_set_max_text(info_ptr->rust_ptr, 0);
       }
    }
 #endif
@@ -507,10 +510,10 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
    /* Free any tRNS entry */
    if (((mask & PNG_FREE_TRNS) & info_ptr->free_me) != 0)
    {
-      info_ptr->valid &= ~PNG_INFO_tRNS;
-      png_free(png_ptr, info_ptr->trans_alpha);
-      info_ptr->trans_alpha = NULL;
-      info_ptr->num_trans = 0;
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_tRNS);
+      png_free(png_ptr, png_info_rust_get_trans_alpha(info_ptr->rust_ptr));
+      png_info_rust_set_trans_alpha(info_ptr->rust_ptr, NULL);
+      png_info_rust_set_num_trans(info_ptr->rust_ptr, 0);
    }
 #endif
 
@@ -518,11 +521,11 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
    /* Free any sCAL entry */
    if (((mask & PNG_FREE_SCAL) & info_ptr->free_me) != 0)
    {
-      png_free(png_ptr, info_ptr->scal_s_width);
-      png_free(png_ptr, info_ptr->scal_s_height);
-      info_ptr->scal_s_width = NULL;
-      info_ptr->scal_s_height = NULL;
-      info_ptr->valid &= ~PNG_INFO_sCAL;
+      png_free(png_ptr, png_info_rust_get_scal_s_width(info_ptr->rust_ptr));
+      png_free(png_ptr, png_info_rust_get_scal_s_height(info_ptr->rust_ptr));
+      png_info_rust_set_scal_s_width(info_ptr->rust_ptr, NULL);
+      png_info_rust_set_scal_s_height(info_ptr->rust_ptr, NULL);
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_sCAL);
    }
 #endif
 
@@ -545,7 +548,7 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
             png_free(png_ptr, info_ptr->pcal_params);
             info_ptr->pcal_params = NULL;
          }
-      info_ptr->valid &= ~PNG_INFO_pCAL;
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_pCAL);
    }
 #endif
 
@@ -553,11 +556,11 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
    /* Free any profile entry */
    if (((mask & PNG_FREE_ICCP) & info_ptr->free_me) != 0)
    {
-      png_free(png_ptr, info_ptr->iccp_name);
-      png_free(png_ptr, info_ptr->iccp_profile);
-      info_ptr->iccp_name = NULL;
-      info_ptr->iccp_profile = NULL;
-      info_ptr->valid &= ~PNG_INFO_iCCP;
+      png_free(png_ptr, png_info_rust_get_iccp_name(info_ptr->rust_ptr));
+      png_free(png_ptr, png_info_rust_get_iccp_profile(info_ptr->rust_ptr));
+      png_info_rust_set_iccp_name(info_ptr->rust_ptr, NULL);
+      png_info_rust_set_iccp_profile(info_ptr->rust_ptr, NULL);
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_iCCP);
    }
 #endif
 
@@ -587,7 +590,7 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
          png_free(png_ptr, info_ptr->splt_palettes);
          info_ptr->splt_palettes = NULL;
          info_ptr->splt_palettes_num = 0;
-         info_ptr->valid &= ~PNG_INFO_sPLT;
+         png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_sPLT);
       }
    }
 #endif
@@ -621,18 +624,18 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
    if (((mask & PNG_FREE_EXIF) & info_ptr->free_me) != 0)
    {
 # ifdef PNG_READ_eXIf_SUPPORTED
-      if (info_ptr->eXIf_buf)
+      if (png_info_rust_get_eXIf_buf(info_ptr->rust_ptr))
       {
-         png_free(png_ptr, info_ptr->eXIf_buf);
-         info_ptr->eXIf_buf = NULL;
+         png_free(png_ptr, png_info_rust_get_eXIf_buf(info_ptr->rust_ptr));
+         png_info_rust_set_eXIf_buf(info_ptr->rust_ptr, NULL);
       }
 # endif
-      if (info_ptr->exif)
+      if (png_info_rust_get_exif(info_ptr->rust_ptr))
       {
-         png_free(png_ptr, info_ptr->exif);
-         info_ptr->exif = NULL;
+         png_free(png_ptr, png_info_rust_get_exif(info_ptr->rust_ptr));
+         png_info_rust_set_exif(info_ptr->rust_ptr, NULL);
       }
-      info_ptr->valid &= ~PNG_INFO_eXIf;
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_eXIf);
    }
 #endif
 
@@ -642,17 +645,17 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
    {
       png_free(png_ptr, info_ptr->hist);
       info_ptr->hist = NULL;
-      info_ptr->valid &= ~PNG_INFO_hIST;
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_hIST);
    }
 #endif
 
    /* Free any PLTE entry that was internally allocated */
    if (((mask & PNG_FREE_PLTE) & info_ptr->free_me) != 0)
    {
-      png_free(png_ptr, info_ptr->palette);
-      info_ptr->palette = NULL;
-      info_ptr->valid &= ~PNG_INFO_PLTE;
-      info_ptr->num_palette = 0;
+      png_free(png_ptr, png_info_rust_get_palette(info_ptr->rust_ptr));
+      png_info_rust_set_palette(info_ptr->rust_ptr, NULL);
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_PLTE);
+      png_info_rust_set_num_palette(info_ptr->rust_ptr, 0);
    }
 
 #ifdef PNG_INFO_IMAGE_SUPPORTED
@@ -662,13 +665,13 @@ png_free_data(png_const_structrp png_ptr, png_inforp info_ptr, png_uint_32 mask,
       if (info_ptr->row_pointers != NULL)
       {
          png_uint_32 row;
-         for (row = 0; row < info_ptr->height; row++)
+         for (row = 0; row < png_info_rust_get_height(info_ptr->rust_ptr); row++)
             png_free(png_ptr, info_ptr->row_pointers[row]);
 
          png_free(png_ptr, info_ptr->row_pointers);
          info_ptr->row_pointers = NULL;
       }
-      info_ptr->valid &= ~PNG_INFO_IDAT;
+      png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_IDAT);
    }
 #endif
 
@@ -1172,8 +1175,8 @@ png_colorspace_sync_info(png_const_structrp png_ptr, png_inforp info_ptr)
    if ((info_ptr->colorspace.flags & PNG_COLORSPACE_INVALID) != 0)
    {
       /* Everything is invalid */
-      info_ptr->valid &= ~(PNG_INFO_gAMA|PNG_INFO_cHRM|PNG_INFO_sRGB|
-         PNG_INFO_iCCP);
+      png_info_rust_remove_valid(info_ptr->rust_ptr, (PNG_INFO_gAMA|PNG_INFO_cHRM|PNG_INFO_sRGB|
+         PNG_INFO_iCCP));
 
 #     ifdef PNG_COLORSPACE_SUPPORTED
       /* Clean up the iCCP profile now if it won't be used. */
@@ -1191,23 +1194,23 @@ png_colorspace_sync_info(png_const_structrp png_ptr, png_inforp info_ptr)
        * yet still have that profile retrievable by the application.
        */
       if ((info_ptr->colorspace.flags & PNG_COLORSPACE_MATCHES_sRGB) != 0)
-         info_ptr->valid |= PNG_INFO_sRGB;
+         png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_sRGB);
 
       else
-         info_ptr->valid &= ~PNG_INFO_sRGB;
+         png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_sRGB);
 
       if ((info_ptr->colorspace.flags & PNG_COLORSPACE_HAVE_ENDPOINTS) != 0)
-         info_ptr->valid |= PNG_INFO_cHRM;
+         png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_cHRM);
 
       else
-         info_ptr->valid &= ~PNG_INFO_cHRM;
+         png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_cHRM);
 #     endif
 
       if ((info_ptr->colorspace.flags & PNG_COLORSPACE_HAVE_GAMMA) != 0)
-         info_ptr->valid |= PNG_INFO_gAMA;
+         png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_gAMA);
 
       else
-         info_ptr->valid &= ~PNG_INFO_gAMA;
+         png_info_rust_remove_valid(info_ptr->rust_ptr, PNG_INFO_gAMA);
    }
 }
 

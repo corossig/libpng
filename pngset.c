@@ -29,8 +29,8 @@ png_set_bKGD(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL || background == NULL)
       return;
 
-   info_ptr->background = *background;
-   info_ptr->valid |= PNG_INFO_bKGD;
+   png_info_rust_set_background(info_ptr->rust_ptr, background);
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_bKGD);
 }
 #endif
 
@@ -154,18 +154,18 @@ png_set_eXIf_1(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   if (info_ptr->exif)
+   if (png_info_rust_get_exif(info_ptr->rust_ptr))
    {
-      png_free(png_ptr, info_ptr->exif);
-      info_ptr->exif = NULL;
+      png_free(png_ptr, png_info_rust_get_exif(info_ptr->rust_ptr));
+      png_info_rust_set_exif(info_ptr->rust_ptr, NULL);
    }
 
-   info_ptr->num_exif = num_exif;
+   png_info_rust_set_num_exif(info_ptr->rust_ptr, num_exif);
 
-   info_ptr->exif = png_voidcast(png_bytep, png_malloc_warn(png_ptr,
-       info_ptr->num_exif));
+   png_info_rust_set_exif(info_ptr->rust_ptr, png_voidcast(png_bytep, png_malloc_warn(png_ptr,
+       png_info_rust_get_num_exif(info_ptr->rust_ptr))));
 
-   if (info_ptr->exif == NULL)
+   if (png_info_rust_get_exif(info_ptr->rust_ptr) == NULL)
    {
       png_warning(png_ptr, "Insufficient memory for eXIf chunk data");
       return;
@@ -173,10 +173,10 @@ png_set_eXIf_1(png_const_structrp png_ptr, png_inforp info_ptr,
 
    info_ptr->free_me |= PNG_FREE_EXIF;
 
-   for (i = 0; i < (int) info_ptr->num_exif; i++)
-      info_ptr->exif[i] = eXIf_buf[i];
+   for (i = 0; i < (int) png_info_rust_get_num_exif(info_ptr->rust_ptr); i++)
+      png_info_rust_get_exif(info_ptr->rust_ptr)[i] = eXIf_buf[i];
 
-   info_ptr->valid |= PNG_INFO_eXIf;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_eXIf);
 }
 #endif /* eXIf */
 
@@ -216,7 +216,7 @@ png_set_hIST(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   if (info_ptr->num_palette == 0 || info_ptr->num_palette
+   if (png_info_rust_get_num_palette(info_ptr->rust_ptr) == 0 || png_info_rust_get_num_palette(info_ptr->rust_ptr)
        > PNG_MAX_PALETTE_LENGTH)
    {
       png_warning(png_ptr,
@@ -242,10 +242,10 @@ png_set_hIST(png_const_structrp png_ptr, png_inforp info_ptr,
 
    info_ptr->free_me |= PNG_FREE_HIST;
 
-   for (i = 0; i < info_ptr->num_palette; i++)
+   for (i = 0; i < png_info_rust_get_num_palette(info_ptr->rust_ptr); i++)
       info_ptr->hist[i] = hist[i];
 
-   info_ptr->valid |= PNG_INFO_hIST;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_hIST);
 }
 #endif
 
@@ -260,33 +260,33 @@ png_set_IHDR(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   info_ptr->width = width;
-   info_ptr->height = height;
-   info_ptr->bit_depth = (png_byte)bit_depth;
-   info_ptr->color_type = (png_byte)color_type;
-   info_ptr->compression_type = (png_byte)compression_type;
-   info_ptr->filter_type = (png_byte)filter_type;
-   info_ptr->interlace_type = (png_byte)interlace_type;
+   png_info_rust_set_width(info_ptr->rust_ptr, width);
+   png_info_rust_set_height(info_ptr->rust_ptr, height);
+   png_info_rust_set_bit_depth(info_ptr->rust_ptr, (png_byte)bit_depth);
+   png_info_rust_set_color_type(info_ptr->rust_ptr, (png_byte)color_type);
+   png_info_rust_set_compression_type(info_ptr->rust_ptr, (png_byte)compression_type);
+   png_info_rust_set_filter_type(info_ptr->rust_ptr, (png_byte)filter_type);
+   png_info_rust_set_interlace_type(info_ptr->rust_ptr, (png_byte)interlace_type);
 
-   png_check_IHDR (png_ptr, info_ptr->width, info_ptr->height,
-       info_ptr->bit_depth, info_ptr->color_type, info_ptr->interlace_type,
-       info_ptr->compression_type, info_ptr->filter_type);
+   png_check_IHDR (png_ptr, png_info_rust_get_width(info_ptr->rust_ptr), png_info_rust_get_height(info_ptr->rust_ptr),
+       png_info_rust_get_bit_depth(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr), png_info_rust_get_interlace_type(info_ptr->rust_ptr),
+       png_info_rust_get_compression_type(info_ptr->rust_ptr), png_info_rust_get_filter_type(info_ptr->rust_ptr));
 
-   if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
-      info_ptr->channels = 1;
+   if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
+      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
 
-   else if ((info_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
-      info_ptr->channels = 3;
+   else if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_COLOR) != 0)
+      png_info_rust_set_channels(info_ptr->rust_ptr, 3);
 
    else
-      info_ptr->channels = 1;
+      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
 
-   if ((info_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)
-      info_ptr->channels++;
+   if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_ALPHA) != 0)
+      png_info_rust_incr_channels(info_ptr->rust_ptr);
 
-   info_ptr->pixel_depth = (png_byte)(info_ptr->channels * info_ptr->bit_depth);
+   png_info_rust_set_pixel_depth(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_channels(info_ptr->rust_ptr) * png_info_rust_get_bit_depth(info_ptr->rust_ptr)));
 
-   info_ptr->rowbytes = PNG_ROWBYTES(info_ptr->pixel_depth, width);
+   png_info_rust_set_rowbytes(info_ptr->rust_ptr, PNG_ROWBYTES(png_info_rust_get_pixel_depth(info_ptr->rust_ptr), width));
 }
 
 #ifdef PNG_oFFs_SUPPORTED
@@ -299,10 +299,10 @@ png_set_oFFs(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   info_ptr->x_offset = offset_x;
-   info_ptr->y_offset = offset_y;
-   info_ptr->offset_unit_type = (png_byte)unit_type;
-   info_ptr->valid |= PNG_INFO_oFFs;
+   png_info_rust_set_x_offset(info_ptr->rust_ptr, offset_x);
+   png_info_rust_set_y_offset(info_ptr->rust_ptr, offset_y);
+   png_info_rust_set_offset_unit_type(info_ptr->rust_ptr, (png_byte)unit_type);
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_oFFs);
 }
 #endif
 
@@ -419,7 +419,7 @@ png_set_pCAL(png_const_structrp png_ptr, png_inforp info_ptr,
       memcpy(info_ptr->pcal_params[i], params[i], length);
    }
 
-   info_ptr->valid |= PNG_INFO_pCAL;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_pCAL);
    info_ptr->free_me |= PNG_FREE_PCAL;
 }
 #endif
@@ -450,44 +450,44 @@ png_set_sCAL_s(png_const_structrp png_ptr, png_inforp info_ptr,
        sheight[0] == 45 /* '-' */ || !png_check_fp_string(sheight, lengthh))
       png_error(png_ptr, "Invalid sCAL height");
 
-   info_ptr->scal_unit = (png_byte)unit;
+   png_info_rust_set_scal_unit(info_ptr->rust_ptr, (png_byte)unit);
 
    ++lengthw;
 
    png_debug1(3, "allocating unit for info (%u bytes)", (unsigned int)lengthw);
 
-   info_ptr->scal_s_width = png_voidcast(png_charp,
-       png_malloc_warn(png_ptr, lengthw));
+   png_info_rust_set_scal_s_width(info_ptr->rust_ptr, png_voidcast(png_charp,
+       png_malloc_warn(png_ptr, lengthw)));
 
-   if (info_ptr->scal_s_width == NULL)
+   if (png_info_rust_get_scal_s_width(info_ptr->rust_ptr) == NULL)
    {
       png_warning(png_ptr, "Memory allocation failed while processing sCAL");
 
       return;
    }
 
-   memcpy(info_ptr->scal_s_width, swidth, lengthw);
+   memcpy(png_info_rust_get_scal_s_width(info_ptr->rust_ptr), swidth, lengthw);
 
    ++lengthh;
 
    png_debug1(3, "allocating unit for info (%u bytes)", (unsigned int)lengthh);
 
-   info_ptr->scal_s_height = png_voidcast(png_charp,
-       png_malloc_warn(png_ptr, lengthh));
+   png_info_rust_set_scal_s_height(info_ptr->rust_ptr, png_voidcast(png_charp,
+       png_malloc_warn(png_ptr, lengthh)));
 
-   if (info_ptr->scal_s_height == NULL)
+   if (png_info_rust_get_scal_s_height(info_ptr->rust_ptr) == NULL)
    {
-      png_free (png_ptr, info_ptr->scal_s_width);
-      info_ptr->scal_s_width = NULL;
+      png_free (png_ptr, png_info_rust_get_scal_s_width(info_ptr->rust_ptr));
+      png_info_rust_set_scal_s_width(info_ptr->rust_ptr, NULL);
 
       png_warning(png_ptr, "Memory allocation failed while processing sCAL");
 
       return;
    }
 
-   memcpy(info_ptr->scal_s_height, sheight, lengthh);
+   memcpy(png_info_rust_get_scal_s_height(info_ptr->rust_ptr), sheight, lengthh);
 
-   info_ptr->valid |= PNG_INFO_sCAL;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_sCAL);
    info_ptr->free_me |= PNG_FREE_SCAL;
 }
 
@@ -560,10 +560,10 @@ png_set_pHYs(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   info_ptr->x_pixels_per_unit = res_x;
-   info_ptr->y_pixels_per_unit = res_y;
-   info_ptr->phys_unit_type = (png_byte)unit_type;
-   info_ptr->valid |= PNG_INFO_pHYs;
+   png_info_rust_set_x_pixels_per_unit(info_ptr->rust_ptr, res_x);
+   png_info_rust_set_y_pixels_per_unit(info_ptr->rust_ptr, res_y);
+   png_info_rust_set_phys_unit_type(info_ptr->rust_ptr, (png_byte)unit_type);
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_pHYs);
 }
 #endif
 
@@ -579,12 +579,12 @@ png_set_PLTE(png_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   max_palette_length = (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE) ?
-      (1 << info_ptr->bit_depth) : PNG_MAX_PALETTE_LENGTH;
+   max_palette_length = (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE) ?
+      (1 << png_info_rust_get_bit_depth(info_ptr->rust_ptr)) : PNG_MAX_PALETTE_LENGTH;
 
    if (num_palette < 0 || num_palette > (int) max_palette_length)
    {
-      if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
          png_error(png_ptr, "Invalid palette length");
 
       else
@@ -624,13 +624,13 @@ png_set_PLTE(png_structrp png_ptr, png_inforp info_ptr,
    if (num_palette > 0)
       memcpy(png_rust_get_palette(png_ptr->rust_ptr), palette, (unsigned int)num_palette *
           (sizeof (png_color)));
-   info_ptr->palette = png_rust_get_palette(png_ptr->rust_ptr);
+   png_info_rust_set_palette(info_ptr->rust_ptr, png_rust_get_palette(png_ptr->rust_ptr));
    png_rust_set_num_palette(png_ptr->rust_ptr, (png_uint_16)num_palette);
-   info_ptr->num_palette = (png_uint_16)num_palette;
+   png_info_rust_set_num_palette(info_ptr->rust_ptr, (png_uint_16)num_palette);
 
    info_ptr->free_me |= PNG_FREE_PLTE;
 
-   info_ptr->valid |= PNG_INFO_PLTE;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_PLTE);
 }
 
 #ifdef PNG_sBIT_SUPPORTED
@@ -643,8 +643,8 @@ png_set_sBIT(png_const_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL || sig_bit == NULL)
       return;
 
-   info_ptr->sig_bit = *sig_bit;
-   info_ptr->valid |= PNG_INFO_sBIT;
+   png_info_rust_set_sig_bit(info_ptr->rust_ptr, sig_bit);
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_sBIT);
 }
 #endif
 
@@ -709,7 +709,7 @@ png_set_iCCP(png_const_structrp png_ptr, png_inforp info_ptr,
     */
    {
       int result = png_colorspace_set_ICC(png_ptr, &info_ptr->colorspace, name,
-          proflen, profile, info_ptr->color_type);
+          proflen, profile, png_info_rust_get_color_type(info_ptr->rust_ptr));
 
       png_colorspace_sync_info(png_ptr, info_ptr);
 
@@ -749,11 +749,11 @@ png_set_iCCP(png_const_structrp png_ptr, png_inforp info_ptr,
 
    png_free_data(png_ptr, info_ptr, PNG_FREE_ICCP, 0);
 
-   info_ptr->iccp_proflen = proflen;
-   info_ptr->iccp_name = new_iccp_name;
-   info_ptr->iccp_profile = new_iccp_profile;
+   png_info_rust_set_iccp_proflen(info_ptr->rust_ptr, proflen);
+   png_info_rust_set_iccp_name(info_ptr->rust_ptr, new_iccp_name);
+   png_info_rust_set_iccp_profile(info_ptr->rust_ptr, new_iccp_profile);
    info_ptr->free_me |= PNG_FREE_ICCP;
-   info_ptr->valid |= PNG_INFO_iCCP;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_iCCP);
 }
 #endif
 
@@ -786,9 +786,9 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
     * because max_text >= num_text (anyway, subtract of two positive integers
     * can't overflow in any case.)
     */
-   if (num_text > info_ptr->max_text - info_ptr->num_text)
+   if (num_text > png_info_rust_get_max_text(info_ptr->rust_ptr) - png_info_rust_get_num_text(info_ptr->rust_ptr))
    {
-      int old_num_text = info_ptr->num_text;
+      int old_num_text = png_info_rust_get_num_text(info_ptr->rust_ptr);
       int max_text;
       png_textp new_text = NULL;
 
@@ -809,7 +809,7 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
           * the overflow checks.
           */
          new_text = png_voidcast(png_textp,png_realloc_array(png_ptr,
-             info_ptr->text, old_num_text, max_text-old_num_text,
+             png_info_rust_get_text(info_ptr->rust_ptr), old_num_text, max_text-old_num_text,
              sizeof *new_text));
       }
 
@@ -821,11 +821,11 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
          return 1;
       }
 
-      png_free(png_ptr, info_ptr->text);
+      png_free(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr));
 
-      info_ptr->text = new_text;
+      png_info_rust_set_text(info_ptr->rust_ptr, new_text);
       info_ptr->free_me |= PNG_FREE_TEXT;
-      info_ptr->max_text = max_text;
+      png_info_rust_set_max_text(info_ptr->rust_ptr, max_text);
       /* num_text is adjusted below as the entries are copied in */
 
       png_debug1(3, "allocated %d entries for info_ptr->text", max_text);
@@ -835,7 +835,7 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
    {
       size_t text_length, key_len;
       size_t lang_len, lang_key_len;
-      png_textp textp = &(info_ptr->text[info_ptr->num_text]);
+      png_textp textp = &(png_info_rust_get_text(info_ptr->rust_ptr)[png_info_rust_get_num_text(info_ptr->rust_ptr)]);
 
       if (text_ptr[i].key == NULL)
           continue;
@@ -955,8 +955,8 @@ png_set_text_2(png_const_structrp png_ptr, png_inforp info_ptr,
          textp->itxt_length = 0;
       }
 
-      info_ptr->num_text++;
-      png_debug1(3, "transferred text chunk %d", info_ptr->num_text);
+      png_info_rust_incr_num_text(info_ptr->rust_ptr);
+      png_debug1(3, "transferred text chunk %d", png_info_rust_get_num_text(info_ptr->rust_ptr));
    }
 
    return(0);
@@ -985,7 +985,7 @@ png_set_tIME(png_const_structrp png_ptr, png_inforp info_ptr,
    }
 
    info_ptr->mod_time = *mod_time;
-   info_ptr->valid |= PNG_INFO_tIME;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_tIME);
 }
 #endif
 
@@ -1016,23 +1016,23 @@ png_set_tRNS(png_structrp png_ptr, png_inforp info_ptr,
        if (num_trans > 0 && num_trans <= PNG_MAX_PALETTE_LENGTH)
        {
          /* Changed from num_trans to PNG_MAX_PALETTE_LENGTH in version 1.2.1 */
-          info_ptr->trans_alpha = png_voidcast(png_bytep,
-              png_malloc(png_ptr, PNG_MAX_PALETTE_LENGTH));
-          memcpy(info_ptr->trans_alpha, trans_alpha, (size_t)num_trans);
+          png_info_rust_set_trans_alpha(info_ptr->rust_ptr, png_voidcast(png_bytep,
+              png_malloc(png_ptr, PNG_MAX_PALETTE_LENGTH)));
+          memcpy(png_info_rust_get_trans_alpha(info_ptr->rust_ptr), trans_alpha, (size_t)num_trans);
        }
-       png_ptr->trans_alpha = info_ptr->trans_alpha;
+       png_ptr->trans_alpha = png_info_rust_get_trans_alpha(info_ptr->rust_ptr);
    }
 
    if (trans_color != NULL)
    {
 #ifdef PNG_WARNINGS_SUPPORTED
-      if (info_ptr->bit_depth < 16)
+      if (png_info_rust_get_bit_depth(info_ptr->rust_ptr) < 16)
       {
-         int sample_max = (1 << info_ptr->bit_depth) - 1;
+         int sample_max = (1 << png_info_rust_get_bit_depth(info_ptr->rust_ptr)) - 1;
 
-         if ((info_ptr->color_type == PNG_COLOR_TYPE_GRAY &&
+         if ((png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_GRAY &&
              trans_color->gray > sample_max) ||
-             (info_ptr->color_type == PNG_COLOR_TYPE_RGB &&
+             (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB &&
              (trans_color->red > sample_max ||
              trans_color->green > sample_max ||
              trans_color->blue > sample_max)))
@@ -1041,17 +1041,17 @@ png_set_tRNS(png_structrp png_ptr, png_inforp info_ptr,
       }
 #endif
 
-      info_ptr->trans_color = *trans_color;
+      png_info_rust_set_trans_color(info_ptr->rust_ptr, trans_color);
 
       if (num_trans == 0)
          num_trans = 1;
    }
 
-   info_ptr->num_trans = (png_uint_16)num_trans;
+   png_info_rust_set_num_trans(info_ptr->rust_ptr, (png_uint_16)num_trans);
 
    if (num_trans != 0)
    {
-      info_ptr->valid |= PNG_INFO_tRNS;
+      png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_tRNS);
       info_ptr->free_me |= PNG_FREE_TRNS;
    }
 }
@@ -1146,7 +1146,7 @@ png_set_sPLT(png_const_structrp png_ptr,
       /* Note that 'continue' skips the advance of the out pointer and out
        * count, so an invalid entry is not added.
        */
-      info_ptr->valid |= PNG_INFO_sPLT;
+      png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_sPLT);
       ++(info_ptr->splt_palettes_num);
       ++np;
       ++entries;
@@ -1558,7 +1558,7 @@ png_set_rows(png_const_structrp png_ptr, png_inforp info_ptr,
    info_ptr->row_pointers = row_pointers;
 
    if (row_pointers != NULL)
-      info_ptr->valid |= PNG_INFO_IDAT;
+      png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_IDAT);
 }
 #endif
 
@@ -1626,7 +1626,7 @@ void PNGAPI
 png_set_invalid(png_const_structrp png_ptr, png_inforp info_ptr, int mask)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      info_ptr->valid &= (unsigned int)(~mask);
+      png_info_rust_remove_valid(info_ptr->rust_ptr, mask);
 }
 
 

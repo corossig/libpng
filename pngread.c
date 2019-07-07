@@ -1055,7 +1055,7 @@ png_read_png(png_structrp png_ptr, png_inforp info_ptr,
     * PNG file before the first IDAT (image data chunk).
     */
    png_read_info(png_ptr, info_ptr);
-   if (info_ptr->height > PNG_UINT_32_MAX/(sizeof (png_bytep)))
+   if (png_info_rust_get_height(info_ptr->rust_ptr) > PNG_UINT_32_MAX/(sizeof (png_bytep)))
       png_error(png_ptr, "Image is too high to process with png_read_png()");
 
    /* -------------- image transformations start here ------------------- */
@@ -1148,8 +1148,8 @@ png_read_png(png_structrp png_ptr, png_inforp info_ptr,
     */
    if ((transforms & PNG_TRANSFORM_SHIFT) != 0)
 #ifdef PNG_READ_SHIFT_SUPPORTED
-      if ((info_ptr->valid & PNG_INFO_sBIT) != 0)
-         png_set_shift(png_ptr, &info_ptr->sig_bit);
+      if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sBIT) != 0)
+         png_set_shift(png_ptr, png_info_rust_ptr_sig_bit(info_ptr->rust_ptr));
 #else
       png_app_error(png_ptr, "PNG_TRANSFORM_SHIFT not supported");
 #endif
@@ -1225,20 +1225,20 @@ png_read_png(png_structrp png_ptr, png_inforp info_ptr,
       png_uint_32 iptr;
 
       info_ptr->row_pointers = png_voidcast(png_bytepp, png_malloc(png_ptr,
-          info_ptr->height * (sizeof (png_bytep))));
+          png_info_rust_get_height(info_ptr->rust_ptr) * (sizeof (png_bytep))));
 
-      for (iptr=0; iptr<info_ptr->height; iptr++)
+      for (iptr=0; iptr<png_info_rust_get_height(info_ptr->rust_ptr); iptr++)
          info_ptr->row_pointers[iptr] = NULL;
 
       info_ptr->free_me |= PNG_FREE_ROWS;
 
-      for (iptr = 0; iptr < info_ptr->height; iptr++)
+      for (iptr = 0; iptr < png_info_rust_get_height(info_ptr->rust_ptr); iptr++)
          info_ptr->row_pointers[iptr] = png_voidcast(png_bytep,
-             png_malloc(png_ptr, info_ptr->rowbytes));
+             png_malloc(png_ptr, png_info_rust_get_rowbytes(info_ptr->rust_ptr)));
    }
 
    png_read_image(png_ptr, info_ptr->row_pointers);
-   info_ptr->valid |= PNG_INFO_IDAT;
+   png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_IDAT);
 
    /* Read rest of file, and get additional chunks in info_ptr - REQUIRED */
    png_read_end(png_ptr, info_ptr);
@@ -3158,9 +3158,9 @@ png_image_read_colormapped(png_voidp argument)
          /* Output must be one channel and one byte per pixel, the output
           * encoding can be anything.
           */
-         if ((info_ptr->color_type == PNG_COLOR_TYPE_PALETTE ||
-            info_ptr->color_type == PNG_COLOR_TYPE_GRAY) &&
-            info_ptr->bit_depth == 8)
+         if ((png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE ||
+            png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_GRAY) &&
+            png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8)
             break;
 
          goto bad_output;
@@ -3171,8 +3171,8 @@ png_image_read_colormapped(png_voidp argument)
           * can be checked with an exact number because it should have been set
           * to this number above!
           */
-         if (info_ptr->color_type == PNG_COLOR_TYPE_GRAY_ALPHA &&
-            info_ptr->bit_depth == 8 &&
+         if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_GRAY_ALPHA &&
+            png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8 &&
             png_ptr->screen_gamma == PNG_GAMMA_sRGB &&
             image->colormap_entries == 256)
             break;
@@ -3181,8 +3181,8 @@ png_image_read_colormapped(png_voidp argument)
 
       case PNG_CMAP_RGB:
          /* Output must be 8-bit sRGB encoded RGB */
-         if (info_ptr->color_type == PNG_COLOR_TYPE_RGB &&
-            info_ptr->bit_depth == 8 &&
+         if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB &&
+            png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8 &&
             png_ptr->screen_gamma == PNG_GAMMA_sRGB &&
             image->colormap_entries == 216)
             break;
@@ -3191,8 +3191,8 @@ png_image_read_colormapped(png_voidp argument)
 
       case PNG_CMAP_RGB_ALPHA:
          /* Output must be 8-bit sRGB encoded RGBA */
-         if (info_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA &&
-            info_ptr->bit_depth == 8 &&
+         if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB_ALPHA &&
+            png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8 &&
             png_ptr->screen_gamma == PNG_GAMMA_sRGB &&
             image->colormap_entries == 244 /* 216 + 1 + 27 */)
             break;
@@ -3437,7 +3437,7 @@ png_image_read_background(png_voidp argument)
     * checking the value after libpng expansions, not the original value in the
     * PNG.
     */
-   switch (info_ptr->bit_depth)
+   switch (png_info_rust_get_bit_depth(info_ptr->rust_ptr))
    {
       case 8:
          /* 8-bit sRGB gray values with an alpha channel; the alpha channel is
@@ -3978,10 +3978,10 @@ png_image_read_direct(png_voidp argument)
    {
       png_uint_32 info_format = 0;
 
-      if ((info_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
+      if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_COLOR) != 0)
          info_format |= PNG_FORMAT_FLAG_COLOR;
 
-      if ((info_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)
+      if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_ALPHA) != 0)
       {
          /* do_local_compose removes this channel below. */
          if (do_local_compose == 0)
@@ -4000,7 +4000,7 @@ png_image_read_direct(png_voidp argument)
          info_format |= PNG_FORMAT_FLAG_ASSOCIATED_ALPHA;
       }
 
-      if (info_ptr->bit_depth == 16)
+      if (png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 16)
          info_format |= PNG_FORMAT_FLAG_LINEAR;
 
 #ifdef PNG_FORMAT_BGR_SUPPORTED

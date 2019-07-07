@@ -1940,20 +1940,20 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
 #ifdef PNG_READ_EXPAND_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND))
    {
-      if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
       {
          /* This check must match what actually happens in
           * png_do_expand_palette; if it ever checks the tRNS chunk to see if
           * it is all opaque we must do the same (at present it does not.)
           */
          if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0)
-            info_ptr->color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+            png_info_rust_set_color_type(info_ptr->rust_ptr, PNG_COLOR_TYPE_RGB_ALPHA);
 
          else
-            info_ptr->color_type = PNG_COLOR_TYPE_RGB;
+            png_info_rust_set_color_type(info_ptr->rust_ptr, PNG_COLOR_TYPE_RGB);
 
-         info_ptr->bit_depth = 8;
-         info_ptr->num_trans = 0;
+         png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
+         png_info_rust_set_num_trans(info_ptr->rust_ptr, 0);
 
          if (png_rust_get_palette(png_ptr->rust_ptr) == NULL)
             png_error (png_ptr, "Palette is NULL in indexed image");
@@ -1963,12 +1963,12 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
          if (png_rust_get_num_trans(png_ptr->rust_ptr) != 0)
          {
             if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_tRNS))
-               info_ptr->color_type |= PNG_COLOR_MASK_ALPHA;
+               png_info_rust_add_color_type(info_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA);
          }
-         if (info_ptr->bit_depth < 8)
-            info_ptr->bit_depth = 8;
+         if (png_info_rust_get_bit_depth(info_ptr->rust_ptr) < 8)
+            png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 
-         info_ptr->num_trans = 0;
+         png_info_rust_set_num_trans(info_ptr->rust_ptr, 0);
       }
    }
 #endif
@@ -1979,7 +1979,9 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
     * the screen space!
     */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_COMPOSE))
-      info_ptr->background = png_ptr->background;
+   {
+      png_info_rust_set_background(info_ptr->rust_ptr, &png_ptr->background);
+   }
 #endif
 
 #ifdef PNG_READ_GAMMA_SUPPORTED
@@ -1995,17 +1997,17 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
    info_ptr->colorspace.gamma = png_ptr->colorspace.gamma;
 #endif
 
-   if (info_ptr->bit_depth == 16)
+   if (png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 16)
    {
 #  ifdef PNG_READ_16BIT_SUPPORTED
 #     ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
          if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8))
-            info_ptr->bit_depth = 8;
+            png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 #     endif
 
 #     ifdef PNG_READ_STRIP_16_TO_8_SUPPORTED
          if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_16_TO_8))
-            info_ptr->bit_depth = 8;
+            png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 #     endif
 
 #  else
@@ -2019,12 +2021,12 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
           * set the code below will do that in preference to the chop.
           */
          png_rust_add_transformations(png_ptr->rust_ptr, PNG_16_TO_8);
-         info_ptr->bit_depth = 8;
+         png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 #     else
 
 #        ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
             png_rust_add_transformations(png_ptr->rust_ptr, PNG_SCALE_16_TO_8);
-            info_ptr->bit_depth = 8;
+            png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 #        else
 
             CONFIGURATION ERROR: you must enable at least one 16 to 8 method
@@ -2035,74 +2037,74 @@ png_read_transform_info(png_structrp png_ptr, png_inforp info_ptr)
 
 #ifdef PNG_READ_GRAY_TO_RGB_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_GRAY_TO_RGB))
-      info_ptr->color_type = (png_byte)(info_ptr->color_type |
-         PNG_COLOR_MASK_COLOR);
+      png_info_rust_set_color_type(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_color_type(info_ptr->rust_ptr) |
+         PNG_COLOR_MASK_COLOR));
 #endif
 
 #ifdef PNG_READ_RGB_TO_GRAY_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_RGB_TO_GRAY))
-      info_ptr->color_type = (png_byte)(info_ptr->color_type &
-         ~PNG_COLOR_MASK_COLOR);
+      png_info_rust_set_color_type(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_color_type(info_ptr->rust_ptr) &
+         ~PNG_COLOR_MASK_COLOR));
 #endif
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_QUANTIZE))
    {
-      if (((info_ptr->color_type == PNG_COLOR_TYPE_RGB) ||
-          (info_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA)) &&
-          png_ptr->palette_lookup != 0 && info_ptr->bit_depth == 8)
+      if (((png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB) ||
+          (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB_ALPHA)) &&
+          png_ptr->palette_lookup != 0 && png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8)
       {
-         info_ptr->color_type = PNG_COLOR_TYPE_PALETTE;
+         png_info_rust_set_color_type(info_ptr->rust_ptr, PNG_COLOR_TYPE_PALETTE);
       }
    }
 #endif
 
 #ifdef PNG_READ_EXPAND_16_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16) &&
-       info_ptr->bit_depth == 8 &&
-       info_ptr->color_type != PNG_COLOR_TYPE_PALETTE)
+       png_info_rust_get_bit_depth(info_ptr->rust_ptr) == 8 &&
+       png_info_rust_get_color_type(info_ptr->rust_ptr) != PNG_COLOR_TYPE_PALETTE)
    {
-      info_ptr->bit_depth = 16;
+      png_info_rust_set_bit_depth(info_ptr->rust_ptr, 16);
    }
 #endif
 
 #ifdef PNG_READ_PACK_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_PACK) &&
-       (info_ptr->bit_depth < 8))
-      info_ptr->bit_depth = 8;
+       (png_info_rust_get_bit_depth(info_ptr->rust_ptr) < 8))
+      png_info_rust_set_bit_depth(info_ptr->rust_ptr, 8);
 #endif
 
-   if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
-      info_ptr->channels = 1;
+   if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
+      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
 
-   else if ((info_ptr->color_type & PNG_COLOR_MASK_COLOR) != 0)
-      info_ptr->channels = 3;
+   else if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_COLOR) != 0)
+      png_info_rust_set_channels(info_ptr->rust_ptr, 3);
 
    else
-      info_ptr->channels = 1;
+      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
 
 #ifdef PNG_READ_STRIP_ALPHA_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_STRIP_ALPHA))
    {
-      info_ptr->color_type = (png_byte)(info_ptr->color_type &
-         ~PNG_COLOR_MASK_ALPHA);
-      info_ptr->num_trans = 0;
+      png_info_rust_set_color_type(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_color_type(info_ptr->rust_ptr) &
+         ~PNG_COLOR_MASK_ALPHA));
+      png_info_rust_set_num_trans(info_ptr->rust_ptr, 0);
    }
 #endif
 
-   if ((info_ptr->color_type & PNG_COLOR_MASK_ALPHA) != 0)
-      info_ptr->channels++;
+   if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_ALPHA) != 0)
+      png_info_rust_incr_channels(info_ptr->rust_ptr);
 
 #ifdef PNG_READ_FILLER_SUPPORTED
    /* STRIP_ALPHA and FILLER allowed:  MASK_ALPHA bit stripped above */
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER) &&
-       (info_ptr->color_type == PNG_COLOR_TYPE_RGB ||
-       info_ptr->color_type == PNG_COLOR_TYPE_GRAY))
+       (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_RGB ||
+       png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_GRAY))
    {
-      info_ptr->channels++;
+      png_info_rust_incr_channels(info_ptr->rust_ptr);
       /* If adding a true alpha channel not just filler */
       if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_ADD_ALPHA))
-         info_ptr->color_type |= PNG_COLOR_MASK_ALPHA;
+         png_info_rust_add_color_type(info_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA);
    }
 #endif
 
@@ -2111,17 +2113,17 @@ defined(PNG_READ_USER_TRANSFORM_SUPPORTED)
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_USER_TRANSFORM))
    {
       if (png_ptr->user_transform_depth != 0)
-         info_ptr->bit_depth = png_ptr->user_transform_depth;
+         png_info_rust_set_bit_depth(info_ptr->rust_ptr, png_ptr->user_transform_depth);
 
       if (png_ptr->user_transform_channels != 0)
-         info_ptr->channels = png_ptr->user_transform_channels;
+         png_info_rust_set_channels(info_ptr->rust_ptr, png_ptr->user_transform_channels);
    }
 #endif
 
-   info_ptr->pixel_depth = (png_byte)(info_ptr->channels *
-       info_ptr->bit_depth);
+   png_info_rust_set_pixel_depth(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_channels(info_ptr->rust_ptr) *
+       png_info_rust_get_bit_depth(info_ptr->rust_ptr)));
 
-   info_ptr->rowbytes = PNG_ROWBYTES(info_ptr->pixel_depth, info_ptr->width);
+   png_info_rust_set_rowbytes(info_ptr->rust_ptr, PNG_ROWBYTES(png_info_rust_get_pixel_depth(info_ptr->rust_ptr), png_info_rust_get_width(info_ptr->rust_ptr)));
 
    /* Adding in 1.5.4: cache the above value in png_struct so that we can later
     * check in png_rowbytes that the user buffer won't get overwritten.  Note
@@ -2129,7 +2131,7 @@ defined(PNG_READ_USER_TRANSFORM_SUPPORTED)
     * the application has to either not do any transforms or get the calculation
     * right itself.
     */
-   png_rust_set_info_rowbytes(png_ptr->rust_ptr, info_ptr->rowbytes);
+   png_rust_set_info_rowbytes(png_ptr->rust_ptr, png_info_rust_get_rowbytes(info_ptr->rust_ptr));
 
 #ifndef PNG_READ_EXPAND_SUPPORTED
    if (png_ptr != NULL)

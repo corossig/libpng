@@ -103,11 +103,11 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
 #endif
 
       /* Write IHDR information. */
-      png_write_IHDR(png_ptr, info_ptr->width, info_ptr->height,
-          info_ptr->bit_depth, info_ptr->color_type, info_ptr->compression_type,
-          info_ptr->filter_type,
+      png_write_IHDR(png_ptr, png_info_rust_get_width(info_ptr->rust_ptr), png_info_rust_get_height(info_ptr->rust_ptr),
+          png_info_rust_get_bit_depth(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr), png_info_rust_get_compression_type(info_ptr->rust_ptr),
+          png_info_rust_get_filter_type(info_ptr->rust_ptr),
 #ifdef PNG_WRITE_INTERLACING_SUPPORTED
-          info_ptr->interlace_type
+          png_info_rust_get_interlace_type(info_ptr->rust_ptr)
 #else
           0
 #endif
@@ -131,7 +131,7 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
 #  ifdef PNG_WRITE_gAMA_SUPPORTED
       if ((info_ptr->colorspace.flags & PNG_COLORSPACE_INVALID) == 0 &&
           (info_ptr->colorspace.flags & PNG_COLORSPACE_FROM_gAMA) != 0 &&
-          (info_ptr->valid & PNG_INFO_gAMA) != 0)
+          (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_gAMA) != 0)
          png_write_gAMA_fixed(png_ptr, info_ptr->colorspace.gamma);
 #  endif
 #endif
@@ -142,16 +142,16 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
        */
 #  ifdef PNG_WRITE_iCCP_SUPPORTED
          if ((info_ptr->colorspace.flags & PNG_COLORSPACE_INVALID) == 0 &&
-             (info_ptr->valid & PNG_INFO_iCCP) != 0)
+             (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_iCCP) != 0)
          {
 #    ifdef PNG_WRITE_sRGB_SUPPORTED
-               if ((info_ptr->valid & PNG_INFO_sRGB) != 0)
+               if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sRGB) != 0)
                   png_app_warning(png_ptr,
                       "profile matches sRGB but writing iCCP instead");
 #     endif
 
-            png_write_iCCP(png_ptr, info_ptr->iccp_name,
-                info_ptr->iccp_profile);
+            png_write_iCCP(png_ptr, png_info_rust_get_iccp_name(info_ptr->rust_ptr),
+                png_info_rust_get_iccp_profile(info_ptr->rust_ptr));
          }
 #     ifdef PNG_WRITE_sRGB_SUPPORTED
          else
@@ -160,21 +160,21 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
 
 #  ifdef PNG_WRITE_sRGB_SUPPORTED
          if ((info_ptr->colorspace.flags & PNG_COLORSPACE_INVALID) == 0 &&
-             (info_ptr->valid & PNG_INFO_sRGB) != 0)
+             (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sRGB) != 0)
             png_write_sRGB(png_ptr, info_ptr->colorspace.rendering_intent);
 #  endif /* WRITE_sRGB */
 #endif /* COLORSPACE */
 
 #ifdef PNG_WRITE_sBIT_SUPPORTED
-         if ((info_ptr->valid & PNG_INFO_sBIT) != 0)
-            png_write_sBIT(png_ptr, &(info_ptr->sig_bit), info_ptr->color_type);
+         if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sBIT) != 0)
+            png_write_sBIT(png_ptr, png_info_rust_ptr_sig_bit(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_COLORSPACE_SUPPORTED
 #  ifdef PNG_WRITE_cHRM_SUPPORTED
          if ((info_ptr->colorspace.flags & PNG_COLORSPACE_INVALID) == 0 &&
              (info_ptr->colorspace.flags & PNG_COLORSPACE_FROM_cHRM) != 0 &&
-             (info_ptr->valid & PNG_INFO_cHRM) != 0)
+             (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_cHRM) != 0)
             png_write_cHRM_fixed(png_ptr, &info_ptr->colorspace.end_points_xy);
 #  endif
 #endif
@@ -201,78 +201,78 @@ png_write_info(png_structrp png_ptr, png_const_inforp info_ptr)
 
    png_write_info_before_PLTE(png_ptr, info_ptr);
 
-   if ((info_ptr->valid & PNG_INFO_PLTE) != 0)
-      png_write_PLTE(png_ptr, info_ptr->palette,
-          (png_uint_32)info_ptr->num_palette);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_PLTE) != 0)
+      png_write_PLTE(png_ptr, png_info_rust_get_palette(info_ptr->rust_ptr),
+          (png_uint_32)png_info_rust_get_num_palette(info_ptr->rust_ptr));
 
-   else if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+   else if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
       png_error(png_ptr, "Valid palette required for paletted images");
 
 #ifdef PNG_WRITE_tRNS_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_tRNS) !=0)
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tRNS) !=0)
    {
 #ifdef PNG_WRITE_INVERT_ALPHA_SUPPORTED
       /* Invert the alpha channel (in tRNS) */
       if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_INVERT_ALPHA) &&
-          info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+          png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
       {
          int j, jend;
 
-         jend = info_ptr->num_trans;
+         jend = png_info_rust_get_num_trans(info_ptr->rust_ptr);
          if (jend > PNG_MAX_PALETTE_LENGTH)
             jend = PNG_MAX_PALETTE_LENGTH;
 
          for (j = 0; j<jend; ++j)
-            info_ptr->trans_alpha[j] =
-               (png_byte)(255 - info_ptr->trans_alpha[j]);
+            png_info_rust_get_trans_alpha(info_ptr->rust_ptr)[j] =
+               (png_byte)(255 - png_info_rust_get_trans_alpha(info_ptr->rust_ptr)[j]);
       }
 #endif
-      png_write_tRNS(png_ptr, info_ptr->trans_alpha, &(info_ptr->trans_color),
-          info_ptr->num_trans, info_ptr->color_type);
+      png_write_tRNS(png_ptr, png_info_rust_get_trans_alpha(info_ptr->rust_ptr), png_info_rust_ptr_trans_color(info_ptr->rust_ptr),
+          png_info_rust_get_num_trans(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr));
    }
 #endif
 #ifdef PNG_WRITE_bKGD_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_bKGD) != 0)
-      png_write_bKGD(png_ptr, &(info_ptr->background), info_ptr->color_type);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_bKGD) != 0)
+      png_write_bKGD(png_ptr, png_info_rust_ptr_background(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_eXIf_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_eXIf) != 0)
-      png_write_eXIf(png_ptr, info_ptr->exif, info_ptr->num_exif);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_eXIf) != 0)
+      png_write_eXIf(png_ptr, png_info_rust_get_exif(info_ptr->rust_ptr), png_info_rust_get_num_exif(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_hIST_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_hIST) != 0)
-      png_write_hIST(png_ptr, info_ptr->hist, info_ptr->num_palette);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_hIST) != 0)
+      png_write_hIST(png_ptr, info_ptr->hist, png_info_rust_get_num_palette(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_oFFs_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_oFFs) != 0)
-      png_write_oFFs(png_ptr, info_ptr->x_offset, info_ptr->y_offset,
-          info_ptr->offset_unit_type);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
+      png_write_oFFs(png_ptr, png_info_rust_get_x_offset(info_ptr->rust_ptr), png_info_rust_get_y_offset(info_ptr->rust_ptr),
+          png_info_rust_get_offset_unit_type(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_pCAL_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_pCAL) != 0)
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pCAL) != 0)
       png_write_pCAL(png_ptr, info_ptr->pcal_purpose, info_ptr->pcal_X0,
           info_ptr->pcal_X1, info_ptr->pcal_type, info_ptr->pcal_nparams,
           info_ptr->pcal_units, info_ptr->pcal_params);
 #endif
 
 #ifdef PNG_WRITE_sCAL_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_sCAL) != 0)
-      png_write_sCAL_s(png_ptr, (int)info_ptr->scal_unit,
-          info_ptr->scal_s_width, info_ptr->scal_s_height);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sCAL) != 0)
+      png_write_sCAL_s(png_ptr, (int)png_info_rust_get_scal_unit(info_ptr->rust_ptr),
+          png_info_rust_get_scal_s_width(info_ptr->rust_ptr), png_info_rust_get_scal_s_height(info_ptr->rust_ptr));
 #endif /* sCAL */
 
 #ifdef PNG_WRITE_pHYs_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_pHYs) != 0)
-      png_write_pHYs(png_ptr, info_ptr->x_pixels_per_unit,
-          info_ptr->y_pixels_per_unit, info_ptr->phys_unit_type);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
+      png_write_pHYs(png_ptr, png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr),
+          png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr), png_info_rust_get_phys_unit_type(info_ptr->rust_ptr));
 #endif /* pHYs */
 
 #ifdef PNG_WRITE_tIME_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_tIME) != 0)
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tIME) != 0)
    {
       png_write_tIME(png_ptr, &(info_ptr->mod_time));
       png_rust_add_mode(png_ptr->rust_ptr, PNG_WROTE_tIME);
@@ -280,61 +280,61 @@ png_write_info(png_structrp png_ptr, png_const_inforp info_ptr)
 #endif /* tIME */
 
 #ifdef PNG_WRITE_sPLT_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_sPLT) != 0)
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sPLT) != 0)
       for (i = 0; i < (int)info_ptr->splt_palettes_num; i++)
          png_write_sPLT(png_ptr, info_ptr->splt_palettes + i);
 #endif /* sPLT */
 
 #ifdef PNG_WRITE_TEXT_SUPPORTED
    /* Check to see if we need to write text chunks */
-   for (i = 0; i < info_ptr->num_text; i++)
+   for (i = 0; i < png_info_rust_get_num_text(info_ptr->rust_ptr); i++)
    {
       png_debug2(2, "Writing header text chunk %d, type %d", i,
-          info_ptr->text[i].compression);
+          png_info_rust_get_text(info_ptr->rust_ptr)[i].compression);
       /* An internationalized chunk? */
-      if (info_ptr->text[i].compression > 0)
+      if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression > 0)
       {
 #ifdef PNG_WRITE_iTXt_SUPPORTED
          /* Write international chunk */
          png_write_iTXt(png_ptr,
-             info_ptr->text[i].compression,
-             info_ptr->text[i].key,
-             info_ptr->text[i].lang,
-             info_ptr->text[i].lang_key,
-             info_ptr->text[i].text);
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].compression,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].lang,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].lang_key,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].text);
          /* Mark this chunk as written */
-         if (info_ptr->text[i].compression == PNG_TEXT_COMPRESSION_NONE)
-            info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
+         if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression == PNG_TEXT_COMPRESSION_NONE)
+            png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
          else
-            info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
+            png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
 #else
          png_warning(png_ptr, "Unable to write international text");
 #endif
       }
 
       /* If we want a compressed text chunk */
-      else if (info_ptr->text[i].compression == PNG_TEXT_COMPRESSION_zTXt)
+      else if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression == PNG_TEXT_COMPRESSION_zTXt)
       {
 #ifdef PNG_WRITE_zTXt_SUPPORTED
          /* Write compressed chunk */
-         png_write_zTXt(png_ptr, info_ptr->text[i].key,
-             info_ptr->text[i].text, info_ptr->text[i].compression);
+         png_write_zTXt(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].text, png_info_rust_get_text(info_ptr->rust_ptr)[i].compression);
          /* Mark this chunk as written */
-         info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
+         png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
 #else
          png_warning(png_ptr, "Unable to write compressed text");
 #endif
       }
 
-      else if (info_ptr->text[i].compression == PNG_TEXT_COMPRESSION_NONE)
+      else if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression == PNG_TEXT_COMPRESSION_NONE)
       {
 #ifdef PNG_WRITE_tEXt_SUPPORTED
          /* Write uncompressed chunk */
-         png_write_tEXt(png_ptr, info_ptr->text[i].key,
-             info_ptr->text[i].text,
+         png_write_tEXt(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].text,
              0);
          /* Mark this chunk as written */
-         info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
+         png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
 #else
          /* Can't get here */
          png_warning(png_ptr, "Unable to write uncompressed text");
@@ -377,59 +377,59 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
 #endif
 #ifdef PNG_WRITE_tIME_SUPPORTED
       /* Check to see if user has supplied a time chunk */
-      if ((info_ptr->valid & PNG_INFO_tIME) != 0 &&
+      if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tIME) != 0 &&
           ! png_rust_has_mode(png_ptr->rust_ptr, PNG_WROTE_tIME) )
          png_write_tIME(png_ptr, &(info_ptr->mod_time));
 
 #endif
 #ifdef PNG_WRITE_TEXT_SUPPORTED
       /* Loop through comment chunks */
-      for (i = 0; i < info_ptr->num_text; i++)
+      for (i = 0; i < png_info_rust_get_num_text(info_ptr->rust_ptr); i++)
       {
          png_debug2(2, "Writing trailer text chunk %d, type %d", i,
-             info_ptr->text[i].compression);
+             png_info_rust_get_text(info_ptr->rust_ptr)[i].compression);
          /* An internationalized chunk? */
-         if (info_ptr->text[i].compression > 0)
+         if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression > 0)
          {
 #ifdef PNG_WRITE_iTXt_SUPPORTED
             /* Write international chunk */
             png_write_iTXt(png_ptr,
-                info_ptr->text[i].compression,
-                info_ptr->text[i].key,
-                info_ptr->text[i].lang,
-                info_ptr->text[i].lang_key,
-                info_ptr->text[i].text);
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].compression,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].lang,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].lang_key,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].text);
             /* Mark this chunk as written */
-            if (info_ptr->text[i].compression == PNG_TEXT_COMPRESSION_NONE)
-               info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
+            if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression == PNG_TEXT_COMPRESSION_NONE)
+               png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
             else
-               info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
+               png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
 #else
             png_warning(png_ptr, "Unable to write international text");
 #endif
          }
 
-         else if (info_ptr->text[i].compression >= PNG_TEXT_COMPRESSION_zTXt)
+         else if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression >= PNG_TEXT_COMPRESSION_zTXt)
          {
 #ifdef PNG_WRITE_zTXt_SUPPORTED
             /* Write compressed chunk */
-            png_write_zTXt(png_ptr, info_ptr->text[i].key,
-                info_ptr->text[i].text, info_ptr->text[i].compression);
+            png_write_zTXt(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].text, png_info_rust_get_text(info_ptr->rust_ptr)[i].compression);
             /* Mark this chunk as written */
-            info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
+            png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_zTXt_WR;
 #else
             png_warning(png_ptr, "Unable to write compressed text");
 #endif
          }
 
-         else if (info_ptr->text[i].compression == PNG_TEXT_COMPRESSION_NONE)
+         else if (png_info_rust_get_text(info_ptr->rust_ptr)[i].compression == PNG_TEXT_COMPRESSION_NONE)
          {
 #ifdef PNG_WRITE_tEXt_SUPPORTED
             /* Write uncompressed chunk */
-            png_write_tEXt(png_ptr, info_ptr->text[i].key,
-                info_ptr->text[i].text, 0);
+            png_write_tEXt(png_ptr, png_info_rust_get_text(info_ptr->rust_ptr)[i].key,
+                png_info_rust_get_text(info_ptr->rust_ptr)[i].text, 0);
             /* Mark this chunk as written */
-            info_ptr->text[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
+            png_info_rust_get_text(info_ptr->rust_ptr)[i].compression = PNG_TEXT_COMPRESSION_NONE_WR;
 #else
             png_warning(png_ptr, "Unable to write uncompressed text");
 #endif
@@ -438,8 +438,8 @@ png_write_end(png_structrp png_ptr, png_inforp info_ptr)
 #endif
 
 #ifdef PNG_WRITE_eXIf_SUPPORTED
-   if ((info_ptr->valid & PNG_INFO_eXIf) != 0)
-      png_write_eXIf(png_ptr, info_ptr->exif, info_ptr->num_exif);
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_eXIf) != 0)
+      png_write_eXIf(png_ptr, png_info_rust_get_exif(info_ptr->rust_ptr), png_info_rust_get_num_exif(info_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_WRITE_UNKNOWN_CHUNKS_SUPPORTED
@@ -1345,7 +1345,7 @@ png_write_png(png_structrp png_ptr, png_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return;
 
-   if ((info_ptr->valid & PNG_INFO_IDAT) == 0)
+   if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_IDAT) == 0)
    {
       png_app_error(png_ptr, "no rows for png_write_image to write");
       return;
@@ -1369,8 +1369,8 @@ png_write_png(png_structrp png_ptr, png_inforp info_ptr,
     */
    if ((transforms & PNG_TRANSFORM_SHIFT) != 0)
 #ifdef PNG_WRITE_SHIFT_SUPPORTED
-      if ((info_ptr->valid & PNG_INFO_sBIT) != 0)
-         png_set_shift(png_ptr, &info_ptr->sig_bit);
+      if ((png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sBIT) != 0)
+         png_set_shift(png_ptr, png_info_rust_ptr_sig_bit(info_ptr->rust_ptr));
 #else
       png_app_error(png_ptr, "PNG_TRANSFORM_SHIFT not supported");
 #endif

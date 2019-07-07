@@ -1068,7 +1068,7 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
     */
 #ifdef PNG_READ_tRNS_SUPPORTED
    if (png_rust_get_num_trans(png_ptr->rust_ptr) > 0 ||
-       (info_ptr != NULL && (info_ptr->valid & PNG_INFO_tRNS) != 0))
+       (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tRNS) != 0))
    {
       /* Cancel this because otherwise it would be used if the transforms
        * require it.  Don't cancel the 'valid' flag because this would prevent
@@ -1077,19 +1077,19 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       png_rust_set_num_trans(png_ptr->rust_ptr, 0);
 
       if (info_ptr != NULL)
-         info_ptr->num_trans = 0;
+         png_info_rust_set_num_trans(info_ptr->rust_ptr, 0);
 
       png_chunk_benign_error(png_ptr, "tRNS must be after");
    }
 #endif
 
 #ifdef PNG_READ_hIST_SUPPORTED
-   if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_hIST) != 0)
+   if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_hIST) != 0)
       png_chunk_benign_error(png_ptr, "hIST must be after");
 #endif
 
 #ifdef PNG_READ_bKGD_SUPPORTED
-   if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_bKGD) != 0)
+   if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_bKGD) != 0)
       png_chunk_benign_error(png_ptr, "bKGD must be after");
 #endif
 }
@@ -1171,7 +1171,7 @@ png_handle_sBIT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_sBIT) != 0)
+   if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sBIT) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -1544,19 +1544,18 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                                        png_free_data(png_ptr, info_ptr,
                                            PNG_FREE_ICCP, 0);
 
-                                       info_ptr->iccp_name = png_voidcast(char*,
+                                       png_info_rust_set_iccp_name(info_ptr->rust_ptr, png_voidcast(char*,
                                            png_malloc_base(png_ptr,
-                                           keyword_length+1));
-                                       if (info_ptr->iccp_name != NULL)
+                                           keyword_length+1)));
+                                       if (png_info_rust_get_iccp_name(info_ptr->rust_ptr) != NULL)
                                        {
-                                          memcpy(info_ptr->iccp_name, keyword,
+                                          memcpy(png_info_rust_get_iccp_name(info_ptr->rust_ptr), keyword,
                                               keyword_length+1);
-                                          info_ptr->iccp_proflen =
-                                              profile_length;
-                                          info_ptr->iccp_profile = profile;
+                                          png_info_rust_set_iccp_proflen(info_ptr->rust_ptr, profile_length);
+                                          png_info_rust_set_iccp_profile(info_ptr->rust_ptr, profile);
                                           png_ptr->read_buffer = NULL; /*steal*/
                                           info_ptr->free_me |= PNG_FREE_ICCP;
-                                          info_ptr->valid |= PNG_INFO_iCCP;
+                                          png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_iCCP);
                                        }
 
                                        else
@@ -1828,7 +1827,7 @@ png_handle_tRNS(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_tRNS) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tRNS) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -1936,7 +1935,7 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_bKGD) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_bKGD) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -1973,9 +1972,9 @@ png_handle_bKGD(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    {
       background.index = buf[0];
 
-      if (info_ptr != NULL && info_ptr->num_palette != 0)
+      if (info_ptr != NULL && png_info_rust_get_num_palette(info_ptr->rust_ptr) != 0)
       {
-         if (buf[0] >= info_ptr->num_palette)
+         if (buf[0] >= png_info_rust_get_num_palette(info_ptr->rust_ptr))
          {
             png_chunk_benign_error(png_ptr, "invalid index");
             return;
@@ -2050,7 +2049,7 @@ png_handle_eXIf(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr == NULL || (info_ptr->valid & PNG_INFO_eXIf) != 0)
+   else if (info_ptr == NULL || (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_eXIf) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2059,10 +2058,10 @@ png_handle_eXIf(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 
    info_ptr->free_me |= PNG_FREE_EXIF;
 
-   info_ptr->eXIf_buf = png_voidcast(png_bytep,
-             png_malloc_warn(png_ptr, length));
+   png_info_rust_set_eXIf_buf(info_ptr->rust_ptr, png_voidcast(png_bytep,
+             png_malloc_warn(png_ptr, length)));
 
-   if (info_ptr->eXIf_buf == NULL)
+   if (png_info_rust_get_eXIf_buf(info_ptr->rust_ptr) == NULL)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "out of memory");
@@ -2073,14 +2072,14 @@ png_handle_eXIf(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    {
       png_byte buf[1];
       png_crc_read(png_ptr, buf, 1);
-      info_ptr->eXIf_buf[i] = buf[0];
+      png_info_rust_get_eXIf_buf(info_ptr->rust_ptr)[i] = buf[0];
       if (i == 1 && buf[0] != 'M' && buf[0] != 'I'
-                 && info_ptr->eXIf_buf[0] != buf[0])
+                 && png_info_rust_get_eXIf_buf(info_ptr->rust_ptr)[0] != buf[0])
       {
          png_crc_finish(png_ptr, length);
          png_chunk_benign_error(png_ptr, "incorrect byte-order specifier");
-         png_free(png_ptr, info_ptr->eXIf_buf);
-         info_ptr->eXIf_buf = NULL;
+         png_free(png_ptr, png_info_rust_get_eXIf_buf(info_ptr->rust_ptr));
+         png_info_rust_set_eXIf_buf(info_ptr->rust_ptr, NULL);
          return;
       }
    }
@@ -2088,10 +2087,10 @@ png_handle_eXIf(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    if (png_crc_finish(png_ptr, 0) != 0)
       return;
 
-   png_set_eXIf_1(png_ptr, info_ptr, length, info_ptr->eXIf_buf);
+   png_set_eXIf_1(png_ptr, info_ptr, length, png_info_rust_get_eXIf_buf(info_ptr->rust_ptr));
 
-   png_free(png_ptr, info_ptr->eXIf_buf);
-   info_ptr->eXIf_buf = NULL;
+   png_free(png_ptr, png_info_rust_get_eXIf_buf(info_ptr->rust_ptr));
+   png_info_rust_set_eXIf_buf(info_ptr->rust_ptr, NULL);
 }
 #endif
 
@@ -2115,7 +2114,7 @@ png_handle_hIST(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_hIST) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_hIST) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2167,7 +2166,7 @@ png_handle_pHYs(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_pHYs) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2213,7 +2212,7 @@ png_handle_oFFs(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_oFFs) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2262,7 +2261,7 @@ png_handle_pCAL(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_pCAL) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pCAL) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2389,7 +2388,7 @@ png_handle_sCAL(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       return;
    }
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_sCAL) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sCAL) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");
@@ -2474,7 +2473,7 @@ png_handle_tIME(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    if ((png_rust_get_mode(png_ptr->rust_ptr) & PNG_HAVE_IHDR) == 0)
       png_chunk_error(png_ptr, "missing IHDR");
 
-   else if (info_ptr != NULL && (info_ptr->valid & PNG_INFO_tIME) != 0)
+   else if (info_ptr != NULL && (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tIME) != 0)
    {
       png_crc_finish(png_ptr, length);
       png_chunk_benign_error(png_ptr, "duplicate");

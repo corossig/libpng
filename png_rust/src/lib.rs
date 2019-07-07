@@ -6,7 +6,9 @@ extern crate enum_primitive_derive;
 use num_traits::{FromPrimitive,ToPrimitive};
 
 mod pread;
+mod png_info;
 
+#[repr(u8)]
 enum PngInterlace {
     ADAM7,
 }
@@ -126,6 +128,30 @@ bitflags! {
         const FAST_FILTERS    = (0x08 | 0x10 | 0x20);
     }
 }
+
+#[allow(non_upper_case_globals)] 
+bitflags! {
+    pub struct PngInfoChunk: u32 {
+        const gAMA = 0x0001;
+        const sBIT = 0x0002;
+        const cHRM = 0x0004;
+        const PLTE = 0x0008;
+        const tRNS = 0x0010;
+        const bKGD = 0x0020;
+        const hIST = 0x0040;
+        const pHYs = 0x0080;
+        const oFFs = 0x0100;
+        const tIME = 0x0200;
+        const pCAL = 0x0400;
+        const sRGB = 0x0800;  /* GR-P, 0.96a */
+        const iCCP = 0x1000;  /* ESR, 1.0.6 */
+        const sPLT = 0x2000;  /* ESR, 1.0.6 */
+        const sCAL = 0x4000;  /* ESR, 1.0.6 */
+        const IDAT = 0x8000;  /* ESR, 1.0.6 */
+        const eXIf = 0x10000; /* GR-P, 1.6.31 */
+    }
+}
+
 
 /* TODO : Transform it into regular enum when no more C code depends on it */
 #[derive(Debug, PartialEq, Primitive)]

@@ -20,7 +20,7 @@ png_get_valid(png_const_structrp png_ptr, png_const_inforp info_ptr,
     png_uint_32 flag)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return(info_ptr->valid & flag);
+      return(png_info_rust_get_valid(info_ptr->rust_ptr) & flag);
 
    return(0);
 }
@@ -29,7 +29,7 @@ size_t PNGAPI
 png_get_rowbytes(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return(info_ptr->rowbytes);
+      return(png_info_rust_get_rowbytes(info_ptr->rust_ptr));
 
    return(0);
 }
@@ -51,7 +51,7 @@ png_uint_32 PNGAPI
 png_get_image_width(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->width;
+      return png_info_rust_get_width(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -60,7 +60,7 @@ png_uint_32 PNGAPI
 png_get_image_height(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->height;
+      return png_info_rust_get_height(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -69,7 +69,7 @@ png_byte PNGAPI
 png_get_bit_depth(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->bit_depth;
+      return png_info_rust_get_bit_depth(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -78,7 +78,7 @@ png_byte PNGAPI
 png_get_color_type(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->color_type;
+      return png_info_rust_get_color_type(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -87,7 +87,7 @@ png_byte PNGAPI
 png_get_filter_type(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->filter_type;
+      return png_info_rust_get_filter_type(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -96,7 +96,7 @@ png_byte PNGAPI
 png_get_interlace_type(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->interlace_type;
+      return png_info_rust_get_interlace_type(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -105,7 +105,7 @@ png_byte PNGAPI
 png_get_compression_type(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return info_ptr->compression_type;
+      return png_info_rust_get_compression_type(info_ptr->rust_ptr);
 
    return (0);
 }
@@ -116,13 +116,13 @@ png_get_x_pixels_per_meter(png_const_structrp png_ptr, png_const_inforp
 {
 #ifdef PNG_pHYs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
       {
          png_debug1(1, "in %s retrieval function",
              "png_get_x_pixels_per_meter");
 
-         if (info_ptr->phys_unit_type == PNG_RESOLUTION_METER)
-            return (info_ptr->x_pixels_per_unit);
+         if (png_info_rust_get_phys_unit_type(info_ptr->rust_ptr) == PNG_RESOLUTION_METER)
+            return (png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr));
       }
 #else
    PNG_UNUSED(png_ptr)
@@ -138,13 +138,13 @@ png_get_y_pixels_per_meter(png_const_structrp png_ptr, png_const_inforp
 {
 #ifdef PNG_pHYs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       png_debug1(1, "in %s retrieval function",
           "png_get_y_pixels_per_meter");
 
-      if (info_ptr->phys_unit_type == PNG_RESOLUTION_METER)
-         return (info_ptr->y_pixels_per_unit);
+      if (png_info_rust_get_phys_unit_type(info_ptr->rust_ptr) == PNG_RESOLUTION_METER)
+         return (png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -159,13 +159,13 @@ png_get_pixels_per_meter(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
 #ifdef PNG_pHYs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_pixels_per_meter");
 
-      if (info_ptr->phys_unit_type == PNG_RESOLUTION_METER &&
-          info_ptr->x_pixels_per_unit == info_ptr->y_pixels_per_unit)
-         return (info_ptr->x_pixels_per_unit);
+      if (png_info_rust_get_phys_unit_type(info_ptr->rust_ptr) == PNG_RESOLUTION_METER &&
+          png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr) == png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr))
+         return (png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -182,13 +182,13 @@ png_get_pixel_aspect_ratio(png_const_structrp png_ptr, png_const_inforp
 {
 #ifdef PNG_READ_pHYs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_aspect_ratio");
 
-      if (info_ptr->x_pixels_per_unit != 0)
-         return ((float)((float)info_ptr->y_pixels_per_unit
-             /(float)info_ptr->x_pixels_per_unit));
+      if (png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr) != 0)
+         return ((float)((float)png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr)
+             /(float)png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr)));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -206,10 +206,10 @@ png_get_pixel_aspect_ratio_fixed(png_const_structrp png_ptr,
 {
 #ifdef PNG_READ_pHYs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0 &&
-       info_ptr->x_pixels_per_unit > 0 && info_ptr->y_pixels_per_unit > 0 &&
-       info_ptr->x_pixels_per_unit <= PNG_UINT_31_MAX &&
-       info_ptr->y_pixels_per_unit <= PNG_UINT_31_MAX)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0 &&
+       png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr) > 0 && png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr) > 0 &&
+       png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr) <= PNG_UINT_31_MAX &&
+       png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr) <= PNG_UINT_31_MAX)
    {
       png_fixed_point res;
 
@@ -218,8 +218,8 @@ png_get_pixel_aspect_ratio_fixed(png_const_structrp png_ptr,
       /* The following casts work because a PNG 4 byte integer only has a valid
        * range of 0..2^31-1; otherwise the cast might overflow.
        */
-      if (png_muldiv(&res, (png_int_32)info_ptr->y_pixels_per_unit, PNG_FP_1,
-          (png_int_32)info_ptr->x_pixels_per_unit) != 0)
+      if (png_muldiv(&res, (png_int_32)png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr), PNG_FP_1,
+          (png_int_32)png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr)) != 0)
          return res;
    }
 #else
@@ -236,12 +236,12 @@ png_get_x_offset_microns(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
 #ifdef PNG_oFFs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_oFFs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_x_offset_microns");
 
-      if (info_ptr->offset_unit_type == PNG_OFFSET_MICROMETER)
-         return (info_ptr->x_offset);
+      if (png_info_rust_get_offset_unit_type(info_ptr->rust_ptr) == PNG_OFFSET_MICROMETER)
+         return (png_info_rust_get_x_offset(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -256,12 +256,12 @@ png_get_y_offset_microns(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
 #ifdef PNG_oFFs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_oFFs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_y_offset_microns");
 
-      if (info_ptr->offset_unit_type == PNG_OFFSET_MICROMETER)
-         return (info_ptr->y_offset);
+      if (png_info_rust_get_offset_unit_type(info_ptr->rust_ptr) == PNG_OFFSET_MICROMETER)
+         return (png_info_rust_get_y_offset(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -276,12 +276,12 @@ png_get_x_offset_pixels(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
 #ifdef PNG_oFFs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_oFFs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_x_offset_pixels");
 
-      if (info_ptr->offset_unit_type == PNG_OFFSET_PIXEL)
-         return (info_ptr->x_offset);
+      if (png_info_rust_get_offset_unit_type(info_ptr->rust_ptr) == PNG_OFFSET_PIXEL)
+         return (png_info_rust_get_x_offset(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -296,12 +296,12 @@ png_get_y_offset_pixels(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
 #ifdef PNG_oFFs_SUPPORTED
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_oFFs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "png_get_y_offset_pixels");
 
-      if (info_ptr->offset_unit_type == PNG_OFFSET_PIXEL)
-         return (info_ptr->y_offset);
+      if (png_info_rust_get_offset_unit_type(info_ptr->rust_ptr) == PNG_OFFSET_PIXEL)
+         return (png_info_rust_get_y_offset(info_ptr->rust_ptr));
    }
 #else
    PNG_UNUSED(png_ptr)
@@ -423,25 +423,25 @@ png_get_pHYs_dpi(png_const_structrp png_ptr, png_const_inforp info_ptr,
    png_uint_32 retval = 0;
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       png_debug1(1, "in %s retrieval function", "pHYs");
 
       if (res_x != NULL)
       {
-         *res_x = info_ptr->x_pixels_per_unit;
+         *res_x = png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
       }
 
       if (res_y != NULL)
       {
-         *res_y = info_ptr->y_pixels_per_unit;
+         *res_y = png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
       }
 
       if (unit_type != NULL)
       {
-         *unit_type = (int)info_ptr->phys_unit_type;
+         *unit_type = (int)png_info_rust_get_phys_unit_type(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
 
          if (*unit_type == 1)
@@ -466,7 +466,7 @@ png_byte PNGAPI
 png_get_channels(png_const_structrp png_ptr, png_const_inforp info_ptr)
 {
    if (png_ptr != NULL && info_ptr != NULL)
-      return(info_ptr->channels);
+      return(png_info_rust_get_channels(info_ptr->rust_ptr));
 
    return (0);
 }
@@ -488,12 +488,12 @@ png_get_bKGD(png_const_structrp png_ptr, png_inforp info_ptr,
     png_color_16p *background)
 {
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_bKGD) != 0 &&
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_bKGD) != 0 &&
        background != NULL)
    {
       png_debug1(1, "in %s retrieval function", "bKGD");
 
-      *background = &(info_ptr->background);
+      *background = png_info_rust_ptr_background(info_ptr->rust_ptr);
       return (PNG_INFO_bKGD);
    }
 
@@ -720,7 +720,7 @@ png_get_sRGB(png_const_structrp png_ptr, png_const_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "sRGB");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-      (info_ptr->valid & PNG_INFO_sRGB) != 0 && file_srgb_intent != NULL)
+      (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sRGB) != 0 && file_srgb_intent != NULL)
    {
       *file_srgb_intent = info_ptr->colorspace.rendering_intent;
       return (PNG_INFO_sRGB);
@@ -739,12 +739,12 @@ png_get_iCCP(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "iCCP");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_iCCP) != 0 &&
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_iCCP) != 0 &&
        name != NULL && profile != NULL && proflen != NULL)
    {
-      *name = info_ptr->iccp_name;
-      *profile = info_ptr->iccp_profile;
-      *proflen = png_get_uint_32(info_ptr->iccp_profile);
+      *name = png_info_rust_get_iccp_name(info_ptr->rust_ptr);
+      *profile = png_info_rust_get_iccp_profile(info_ptr->rust_ptr);
+      *proflen = png_get_uint_32(png_info_rust_get_iccp_profile(info_ptr->rust_ptr));
       /* This is somewhat irrelevant since the profile data returned has
        * actually been uncompressed.
        */
@@ -791,10 +791,10 @@ png_get_eXIf_1(png_const_structrp png_ptr, png_const_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "eXIf");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_eXIf) != 0 && exif != NULL)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_eXIf) != 0 && exif != NULL)
    {
-      *num_exif = info_ptr->num_exif;
-      *exif = info_ptr->exif;
+      *num_exif = png_info_rust_get_num_exif(info_ptr->rust_ptr);
+      *exif = png_info_rust_get_exif(info_ptr->rust_ptr);
       return (PNG_INFO_eXIf);
    }
 
@@ -810,7 +810,7 @@ png_get_hIST(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "hIST");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_hIST) != 0 && hist != NULL)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_hIST) != 0 && hist != NULL)
    {
       *hist = info_ptr->hist;
       return (PNG_INFO_hIST);
@@ -832,34 +832,34 @@ png_get_IHDR(png_const_structrp png_ptr, png_const_inforp info_ptr,
       return (0);
 
    if (width != NULL)
-       *width = info_ptr->width;
+       *width = png_info_rust_get_width(info_ptr->rust_ptr);
 
    if (height != NULL)
-       *height = info_ptr->height;
+       *height = png_info_rust_get_height(info_ptr->rust_ptr);
 
    if (bit_depth != NULL)
-       *bit_depth = info_ptr->bit_depth;
+       *bit_depth = png_info_rust_get_bit_depth(info_ptr->rust_ptr);
 
    if (color_type != NULL)
-       *color_type = info_ptr->color_type;
+       *color_type = png_info_rust_get_color_type(info_ptr->rust_ptr);
 
    if (compression_type != NULL)
-      *compression_type = info_ptr->compression_type;
+      *compression_type = png_info_rust_get_compression_type(info_ptr->rust_ptr);
 
    if (filter_type != NULL)
-      *filter_type = info_ptr->filter_type;
+      *filter_type = png_info_rust_get_filter_type(info_ptr->rust_ptr);
 
    if (interlace_type != NULL)
-      *interlace_type = info_ptr->interlace_type;
+      *interlace_type = png_info_rust_get_interlace_type(info_ptr->rust_ptr);
 
    /* This is redundant if we can be sure that the info_ptr values were all
     * assigned in png_set_IHDR().  We do the check anyhow in case an
     * application has ignored our advice not to mess with the members
     * of info_ptr directly.
     */
-   png_check_IHDR(png_ptr, info_ptr->width, info_ptr->height,
-       info_ptr->bit_depth, info_ptr->color_type, info_ptr->interlace_type,
-       info_ptr->compression_type, info_ptr->filter_type);
+   png_check_IHDR(png_ptr, png_info_rust_get_width(info_ptr->rust_ptr), png_info_rust_get_height(info_ptr->rust_ptr),
+       png_info_rust_get_bit_depth(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr), png_info_rust_get_interlace_type(info_ptr->rust_ptr),
+       png_info_rust_get_compression_type(info_ptr->rust_ptr), png_info_rust_get_filter_type(info_ptr->rust_ptr));
 
    return (1);
 }
@@ -872,12 +872,12 @@ png_get_oFFs(png_const_structrp png_ptr, png_const_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "oFFs");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_oFFs) != 0 &&
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_oFFs) != 0 &&
        offset_x != NULL && offset_y != NULL && unit_type != NULL)
    {
-      *offset_x = info_ptr->x_offset;
-      *offset_y = info_ptr->y_offset;
-      *unit_type = (int)info_ptr->offset_unit_type;
+      *offset_x = png_info_rust_get_x_offset(info_ptr->rust_ptr);
+      *offset_y = png_info_rust_get_y_offset(info_ptr->rust_ptr);
+      *unit_type = (int)png_info_rust_get_offset_unit_type(info_ptr->rust_ptr);
       return (PNG_INFO_oFFs);
    }
 
@@ -894,7 +894,7 @@ png_get_pCAL(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "pCAL");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pCAL) != 0 &&
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pCAL) != 0 &&
        purpose != NULL && X0 != NULL && X1 != NULL && type != NULL &&
        nparams != NULL && units != NULL && params != NULL)
    {
@@ -921,15 +921,15 @@ png_get_sCAL_fixed(png_const_structrp png_ptr, png_const_inforp info_ptr,
     int *unit, png_fixed_point *width, png_fixed_point *height)
 {
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_sCAL) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sCAL) != 0)
    {
-      *unit = info_ptr->scal_unit;
+      *unit = png_info_rust_get_scal_unit(info_ptr->rust_ptr);
       /*TODO: make this work without FP support; the API is currently eliminated
        * if neither floating point APIs nor internal floating point arithmetic
        * are enabled.
        */
-      *width = png_fixed(png_ptr, atof(info_ptr->scal_s_width), "sCAL width");
-      *height = png_fixed(png_ptr, atof(info_ptr->scal_s_height),
+      *width = png_fixed(png_ptr, atof(png_info_rust_get_scal_s_width(info_ptr->rust_ptr)), "sCAL width");
+      *height = png_fixed(png_ptr, atof(png_info_rust_get_scal_s_height(info_ptr->rust_ptr)),
           "sCAL height");
       return (PNG_INFO_sCAL);
    }
@@ -944,11 +944,11 @@ png_get_sCAL(png_const_structrp png_ptr, png_const_inforp info_ptr,
     int *unit, double *width, double *height)
 {
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_sCAL) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sCAL) != 0)
    {
-      *unit = info_ptr->scal_unit;
-      *width = atof(info_ptr->scal_s_width);
-      *height = atof(info_ptr->scal_s_height);
+      *unit = png_info_rust_get_scal_unit(info_ptr->rust_ptr);
+      *width = atof(png_info_rust_get_scal_s_width(info_ptr->rust_ptr));
+      *height = atof(png_info_rust_get_scal_s_height(info_ptr->rust_ptr));
       return (PNG_INFO_sCAL);
    }
 
@@ -960,11 +960,11 @@ png_get_sCAL_s(png_const_structrp png_ptr, png_const_inforp info_ptr,
     int *unit, png_charpp width, png_charpp height)
 {
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_sCAL) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sCAL) != 0)
    {
-      *unit = info_ptr->scal_unit;
-      *width = info_ptr->scal_s_width;
-      *height = info_ptr->scal_s_height;
+      *unit = png_info_rust_get_scal_unit(info_ptr->rust_ptr);
+      *width = png_info_rust_get_scal_s_width(info_ptr->rust_ptr);
+      *height = png_info_rust_get_scal_s_height(info_ptr->rust_ptr);
       return (PNG_INFO_sCAL);
    }
 
@@ -982,23 +982,23 @@ png_get_pHYs(png_const_structrp png_ptr, png_const_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "pHYs");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_pHYs) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_pHYs) != 0)
    {
       if (res_x != NULL)
       {
-         *res_x = info_ptr->x_pixels_per_unit;
+         *res_x = png_info_rust_get_x_pixels_per_unit(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
       }
 
       if (res_y != NULL)
       {
-         *res_y = info_ptr->y_pixels_per_unit;
+         *res_y = png_info_rust_get_y_pixels_per_unit(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
       }
 
       if (unit_type != NULL)
       {
-         *unit_type = (int)info_ptr->phys_unit_type;
+         *unit_type = (int)png_info_rust_get_phys_unit_type(info_ptr->rust_ptr);
          retval |= PNG_INFO_pHYs;
       }
    }
@@ -1014,10 +1014,10 @@ png_get_PLTE(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "PLTE");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_PLTE) != 0 && palette != NULL)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_PLTE) != 0 && palette != NULL)
    {
-      *palette = info_ptr->palette;
-      *num_palette = info_ptr->num_palette;
+      *palette = png_info_rust_get_palette(info_ptr->rust_ptr);
+      *num_palette = png_info_rust_get_num_palette(info_ptr->rust_ptr);
       png_debug1(3, "num_palette = %d", *num_palette);
       return (PNG_INFO_PLTE);
    }
@@ -1033,9 +1033,9 @@ png_get_sBIT(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "sBIT");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_sBIT) != 0 && sig_bit != NULL)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_sBIT) != 0 && sig_bit != NULL)
    {
-      *sig_bit = &(info_ptr->sig_bit);
+      *sig_bit = png_info_rust_ptr_sig_bit(info_ptr->rust_ptr);
       return (PNG_INFO_sBIT);
    }
 
@@ -1048,18 +1048,18 @@ int PNGAPI
 png_get_text(png_const_structrp png_ptr, png_inforp info_ptr,
     png_textp *text_ptr, int *num_text)
 {
-   if (png_ptr != NULL && info_ptr != NULL && info_ptr->num_text > 0)
+   if (png_ptr != NULL && info_ptr != NULL && png_info_rust_get_num_text(info_ptr->rust_ptr) > 0)
    {
       png_debug1(1, "in 0x%lx retrieval function",
          (unsigned long)png_rust_get_chunk_name(png_ptr->rust_ptr));
 
       if (text_ptr != NULL)
-         *text_ptr = info_ptr->text;
+         *text_ptr = png_info_rust_get_text(info_ptr->rust_ptr);
 
       if (num_text != NULL)
-         *num_text = info_ptr->num_text;
+         *num_text = png_info_rust_get_num_text(info_ptr->rust_ptr);
 
-      return info_ptr->num_text;
+      return png_info_rust_get_num_text(info_ptr->rust_ptr);
    }
 
    if (num_text != NULL)
@@ -1077,9 +1077,9 @@ png_get_tIME(png_const_structrp png_ptr, png_inforp info_ptr,
    png_debug1(1, "in %s retrieval function", "tIME");
 
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_tIME) != 0 && mod_time != NULL)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tIME) != 0 && mod_time != NULL)
    {
-      *mod_time = &(info_ptr->mod_time);
+      *mod_time = &info_ptr->mod_time;
       return (PNG_INFO_tIME);
    }
 
@@ -1094,27 +1094,27 @@ png_get_tRNS(png_const_structrp png_ptr, png_inforp info_ptr,
 {
    png_uint_32 retval = 0;
    if (png_ptr != NULL && info_ptr != NULL &&
-       (info_ptr->valid & PNG_INFO_tRNS) != 0)
+       (png_info_rust_get_valid(info_ptr->rust_ptr) & PNG_INFO_tRNS) != 0)
    {
       png_debug1(1, "in %s retrieval function", "tRNS");
 
-      if (info_ptr->color_type == PNG_COLOR_TYPE_PALETTE)
+      if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
       {
          if (trans_alpha != NULL)
          {
-            *trans_alpha = info_ptr->trans_alpha;
+            *trans_alpha = png_info_rust_get_trans_alpha(info_ptr->rust_ptr);
             retval |= PNG_INFO_tRNS;
          }
 
          if (trans_color != NULL)
-            *trans_color = &(info_ptr->trans_color);
+            *trans_color = png_info_rust_ptr_trans_color(info_ptr->rust_ptr);
       }
 
       else /* if (info_ptr->color_type != PNG_COLOR_TYPE_PALETTE) */
       {
          if (trans_color != NULL)
          {
-            *trans_color = &(info_ptr->trans_color);
+            *trans_color = png_info_rust_ptr_trans_color(info_ptr->rust_ptr);
             retval |= PNG_INFO_tRNS;
          }
 
@@ -1124,7 +1124,7 @@ png_get_tRNS(png_const_structrp png_ptr, png_inforp info_ptr,
 
       if (num_trans != NULL)
       {
-         *num_trans = info_ptr->num_trans;
+         *num_trans = png_info_rust_get_num_trans(info_ptr->rust_ptr);
          retval |= PNG_INFO_tRNS;
       }
    }
