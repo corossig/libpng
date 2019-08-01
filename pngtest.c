@@ -1,4 +1,3 @@
-
 /* pngtest.c - a simple test program to test libpng
  *
  * Copyright (c) 2018-2019 Cosmin Truta
@@ -1112,7 +1111,7 @@ test_one_file(const char *inname, const char *outname)
       }
 
       else
-         png_error(read_ptr, "png_get_IHDR failed");
+         png_error(read_ptr, "spng_get_IHDR failed");
    }
 #ifdef PNG_FIXED_POINT_SUPPORTED
 #ifdef PNG_cHRM_SUPPORTED

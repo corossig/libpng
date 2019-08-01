@@ -831,37 +831,9 @@ png_get_IHDR(png_const_structrp png_ptr, png_const_inforp info_ptr,
    if (png_ptr == NULL || info_ptr == NULL)
       return (0);
 
-   if (width != NULL)
-       *width = png_info_rust_get_width(info_ptr->rust_ptr);
-
-   if (height != NULL)
-       *height = png_info_rust_get_height(info_ptr->rust_ptr);
-
-   if (bit_depth != NULL)
-       *bit_depth = png_info_rust_get_bit_depth(info_ptr->rust_ptr);
-
-   if (color_type != NULL)
-       *color_type = png_info_rust_get_color_type(info_ptr->rust_ptr);
-
-   if (compression_type != NULL)
-      *compression_type = png_info_rust_get_compression_type(info_ptr->rust_ptr);
-
-   if (filter_type != NULL)
-      *filter_type = png_info_rust_get_filter_type(info_ptr->rust_ptr);
-
-   if (interlace_type != NULL)
-      *interlace_type = png_info_rust_get_interlace_type(info_ptr->rust_ptr);
-
-   /* This is redundant if we can be sure that the info_ptr values were all
-    * assigned in png_set_IHDR().  We do the check anyhow in case an
-    * application has ignored our advice not to mess with the members
-    * of info_ptr directly.
-    */
-   png_check_IHDR(png_ptr, png_info_rust_get_width(info_ptr->rust_ptr), png_info_rust_get_height(info_ptr->rust_ptr),
-       png_info_rust_get_bit_depth(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr), png_info_rust_get_interlace_type(info_ptr->rust_ptr),
-       png_info_rust_get_compression_type(info_ptr->rust_ptr), png_info_rust_get_filter_type(info_ptr->rust_ptr));
-
-   return (1);
+   return png_rust_get_IHDR(png_ptr->rust_ptr, info_ptr->rust_ptr,
+                            width, height, bit_depth, color_type,
+                            interlace_type, compression_type, filter_type);
 }
 
 #ifdef PNG_oFFs_SUPPORTED
@@ -1193,27 +1165,27 @@ png_get_compression_buffer_size(png_const_structrp png_ptr)
 png_uint_32 PNGAPI
 png_get_user_width_max (png_const_structrp png_ptr)
 {
-   return (png_ptr ? png_ptr->user_width_max : 0);
+   return (png_ptr ? png_rust_get_user_width_max(png_ptr->rust_ptr) : 0);
 }
 
 png_uint_32 PNGAPI
 png_get_user_height_max (png_const_structrp png_ptr)
 {
-   return (png_ptr ? png_ptr->user_height_max : 0);
+   return (png_ptr ? png_rust_get_user_height_max(png_ptr->rust_ptr) : 0);
 }
 
 /* This function was added to libpng 1.4.0 */
 png_uint_32 PNGAPI
 png_get_chunk_cache_max (png_const_structrp png_ptr)
 {
-   return (png_ptr ? png_ptr->user_chunk_cache_max : 0);
+   return (png_ptr ? png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) : 0);
 }
 
 /* This function was added to libpng 1.4.1 */
 png_alloc_size_t PNGAPI
 png_get_chunk_malloc_max (png_const_structrp png_ptr)
 {
-   return (png_ptr ? png_ptr->user_chunk_malloc_max : 0);
+   return (png_ptr ? png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) : 0);
 }
 #endif /* SET_USER_LIMITS */
 

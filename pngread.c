@@ -135,10 +135,10 @@ png_read_info(png_structrp png_ptr, png_inforp info_ptr)
        * matching the chunk name rather than a linear search.
        */
       if (chunk_name == png_IHDR)
-         png_handle_IHDR(png_ptr, info_ptr, length);
+         png_rust_handle_IHDR(png_ptr->rust_ptr, info_ptr->rust_ptr, length);
 
       else if (chunk_name == png_IEND)
-         png_handle_IEND(png_ptr, info_ptr, length);
+         png_rust_handle_IEND(png_ptr->rust_ptr, length);
 
 #ifdef PNG_HANDLE_AS_UNKNOWN_SUPPORTED
       else if ((keep = png_chunk_unknown_handling(png_ptr, chunk_name)) != 0)
@@ -558,8 +558,8 @@ png_read_row(png_structrp png_ptr, png_bytep row, png_bytep dsp_row)
    memcpy(png_rust_get_prev_row(png_ptr->rust_ptr), png_rust_get_row_buf(png_ptr->rust_ptr), row_info.rowbytes + 1);
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-   if ((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
-       (png_ptr->filter_type == PNG_INTRAPIXEL_DIFFERENCING))
+   if ((png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_FILTER_64) != 0 &&
+       (png_rust_get_filter_type(png_ptr->rust_ptr) == PNG_INTRAPIXEL_DIFFERENCING))
    {
       /* Intrapixel differencing */
       png_do_read_intrapixel(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
@@ -797,10 +797,10 @@ png_read_end(png_structrp png_ptr, png_inforp info_ptr)
          png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_CHUNK_AFTER_IDAT);
 
       if (chunk_name == png_IEND)
-         png_handle_IEND(png_ptr, info_ptr, length);
+         png_rust_handle_IEND(png_ptr->rust_ptr, length);
 
       else if (chunk_name == png_IHDR)
-         png_handle_IHDR(png_ptr, info_ptr, length);
+         png_rust_handle_IHDR(png_ptr->rust_ptr, info_ptr->rust_ptr, length);
 
       else if (info_ptr == NULL)
          png_crc_finish(png_ptr, length);
@@ -948,8 +948,8 @@ png_read_destroy(png_structrp png_ptr)
    png_ptr->big_row_buf = NULL;
    png_free(png_ptr, png_ptr->big_prev_row);
    png_ptr->big_prev_row = NULL;
-   png_free(png_ptr, png_ptr->read_buffer);
-   png_ptr->read_buffer = NULL;
+   png_free(png_ptr, png_rust_get_read_buffer(png_ptr->rust_ptr));
+   png_rust_set_read_buffer(png_ptr->rust_ptr, NULL);
 
 #ifdef PNG_READ_QUANTIZE_SUPPORTED
    png_free(png_ptr, png_ptr->palette_lookup);
@@ -976,11 +976,6 @@ png_read_destroy(png_structrp png_ptr)
 #endif
 
    inflateEnd(&png_ptr->zstream);
-
-#ifdef PNG_PROGRESSIVE_READ_SUPPORTED
-   png_free(png_ptr, png_rust_get_save_buffer(png_ptr->rust_ptr));
-   png_rust_set_save_buffer(png_ptr->rust_ptr, NULL);
-#endif
 
 #if defined(PNG_STORE_UNKNOWN_CHUNKS_SUPPORTED) && \
    defined(PNG_READ_UNKNOWN_CHUNKS_SUPPORTED)
@@ -1355,10 +1350,10 @@ png_image_format(png_structrp png_ptr)
 {
    png_uint_32 format = 0;
 
-   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
+   if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
       format |= PNG_FORMAT_FLAG_COLOR;
 
-   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
+   if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
       format |= PNG_FORMAT_FLAG_ALPHA;
 
    /* Use png_ptr here, not info_ptr, because by examination png_handle_tRNS
@@ -1372,7 +1367,7 @@ png_image_format(png_structrp png_ptr)
    if (png_rust_get_bit_depth(png_ptr->rust_ptr) == 16)
       format |= PNG_FORMAT_FLAG_LINEAR;
 
-   if (png_rust_is_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_PALETTE))
+   if (png_rust_has_color_type(png_ptr->rust_ptr, PNG_COLOR_MASK_PALETTE))
       format |= PNG_FORMAT_FLAG_COLORMAP;
 
    return format;
@@ -3978,10 +3973,10 @@ png_image_read_direct(png_voidp argument)
    {
       png_uint_32 info_format = 0;
 
-      if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_COLOR) != 0)
+      if (png_info_rust_has_color_type(info_ptr->rust_ptr, PNG_COLOR_MASK_COLOR))
          info_format |= PNG_FORMAT_FLAG_COLOR;
 
-      if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_ALPHA) != 0)
+      if (png_info_rust_has_color_type(info_ptr->rust_ptr, PNG_COLOR_MASK_ALPHA))
       {
          /* do_local_compose removes this channel below. */
          if (do_local_compose == 0)
@@ -4027,8 +4022,10 @@ png_image_read_direct(png_voidp argument)
 #     endif
 
       /* This is actually an internal error. */
-      if (info_format != format)
+         if (info_format != format) {
+            fprintf(stderr, "format%d %d\n", info_format, format);
          png_error(png_ptr, "png_read_image: invalid transformations");
+         }
    }
 
    /* Now read the rows.  If do_local_compose is set then it is necessary to use

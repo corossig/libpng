@@ -314,19 +314,6 @@ struct png_struct_def
    png_bytep riffled_palette; /* buffer for accelerated palette expansion */
 #endif
 
-/* New member added in libpng-1.0.4 (renamed in 1.0.9) */
-#if defined(PNG_MNG_FEATURES_SUPPORTED)
-/* Changed from png_byte to png_uint_32 at version 1.2.0 */
-   png_uint_32 mng_features_permitted;
-#endif
-
-/* New member added in libpng-1.0.9, ifdef'ed out in 1.0.12, enabled in 1.2.0 */
-#ifdef PNG_MNG_FEATURES_SUPPORTED
-   png_byte filter_type;
-#endif
-
-/* New members added in libpng-1.2.0 */
-
 /* New members added in libpng-1.0.2 but first enabled by default in 1.2.0 */
 #ifdef PNG_USER_MEM_SUPPORTED
    png_voidp mem_ptr;             /* user supplied struct for mem functions */
@@ -349,20 +336,6 @@ struct png_struct_def
 /* New members added in libpng-1.0.16 and 1.2.6 */
    png_byte compression_type;
 
-#ifdef PNG_USER_LIMITS_SUPPORTED
-   png_uint_32 user_width_max;
-   png_uint_32 user_height_max;
-
-   /* Added in libpng-1.4.0: Total number of sPLT, text, and unknown
-    * chunks that can be stored (0 means unlimited).
-    */
-   png_uint_32 user_chunk_cache_max;
-
-   /* Total memory that a zTXt, sPLT, iTXt, iCCP, or unknown chunk
-    * can occupy when decompressed.  0 means unlimited.
-    */
-   png_alloc_size_t user_chunk_malloc_max;
-#endif
 
 /* New member added in libpng-1.0.25 and 1.2.17 */
 #ifdef PNG_READ_UNKNOWN_CHUNKS_SUPPORTED
@@ -375,11 +348,6 @@ struct png_struct_def
 /* New member added in libpng-1.2.26 */
    size_t old_big_row_buf_size;
 
-#ifdef PNG_READ_SUPPORTED
-/* New member added in libpng-1.2.30 */
-  png_bytep        read_buffer;      /* buffer for reading chunk data */
-  png_alloc_size_t read_buffer_size; /* current size of the buffer */
-#endif
 #ifdef PNG_SEQUENTIAL_READ_SUPPORTED
   uInt             IDAT_read_size;   /* limit on read buffer size for IDAT */
 #endif

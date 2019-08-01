@@ -94,11 +94,11 @@ png_write_info_before_PLTE(png_structrp png_ptr, png_const_inforp info_ptr)
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
       if ( png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE) && \
-          png_ptr->mng_features_permitted != 0)
+          png_rust_get_mng_features_permitted(png_ptr->rust_ptr) != 0)
       {
          png_warning(png_ptr,
              "MNG features are not allowed in a PNG datastream");
-         png_ptr->mng_features_permitted = 0;
+         png_rust_set_mng_features_permitted(png_ptr->rust_ptr, 0);
       }
 #endif
 
@@ -878,8 +878,8 @@ png_write_row(png_structrp png_ptr, png_const_bytep row)
     * 4. The filter_method is 64 and
     * 5. The color_type is RGB or RGBA
     */
-   if ((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
-       (png_ptr->filter_type == PNG_INTRAPIXEL_DIFFERENCING))
+   if ((png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_FILTER_64) != 0 &&
+       (png_rust_get_filter_type(png_ptr->rust_ptr) == PNG_INTRAPIXEL_DIFFERENCING))
    {
       /* Intrapixel differencing */
       png_do_write_intrapixel(&row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1);
@@ -1004,7 +1004,7 @@ png_set_filter(png_structrp png_ptr, int method, int filters)
       return;
 
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-   if ((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
+   if ((png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_FILTER_64) != 0 &&
        (method == PNG_INTRAPIXEL_DIFFERENCING))
       method = PNG_FILTER_TYPE_BASE;
 

@@ -1495,7 +1495,7 @@ png_init_read_transformations(png_structrp png_ptr)
 
 #if defined(PNG_READ_BACKGROUND_SUPPORTED) && \
    defined(PNG_READ_EXPAND_16_SUPPORTED)
-   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16 || PNG_COMPOSE) &&
+   if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_EXPAND_16 | PNG_COMPOSE) &&
        ! png_rust_has_transformations(png_ptr->rust_ptr, PNG_BACKGROUND_EXPAND) &&
        png_rust_get_bit_depth(png_ptr->rust_ptr) != 16)
    {

@@ -1438,11 +1438,7 @@ PNG_INTERNAL_FUNCTION(void,png_do_bgr,(png_row_infop row_info,
  */
 
 /* Decode the IHDR chunk */
-PNG_INTERNAL_FUNCTION(void,png_handle_IHDR,(png_structrp png_ptr,
-    png_inforp info_ptr, png_uint_32 length),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_handle_PLTE,(png_structrp png_ptr,
-    png_inforp info_ptr, png_uint_32 length),PNG_EMPTY);
-PNG_INTERNAL_FUNCTION(void,png_handle_IEND,(png_structrp png_ptr,
     png_inforp info_ptr, png_uint_32 length),PNG_EMPTY);
 
 #ifdef PNG_READ_bKGD_SUPPORTED
@@ -1576,8 +1572,6 @@ PNG_INTERNAL_FUNCTION(void,png_init_read_transformations,(png_structrp png_ptr),
 #ifdef PNG_PROGRESSIVE_READ_SUPPORTED
 PNG_INTERNAL_FUNCTION(void,png_push_read_chunk,(png_structrp png_ptr,
     png_inforp info_ptr),PNG_EMPTY);
-PNG_INTERNAL_FUNCTION(void,png_push_read_sig,(png_structrp png_ptr,
-    png_inforp info_ptr),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_push_check_crc,(png_structrp png_ptr),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_push_save_buffer,(png_structrp png_ptr),
     PNG_EMPTY);
@@ -1597,8 +1591,6 @@ PNG_INTERNAL_FUNCTION(void,png_push_have_end,(png_structrp png_ptr,
 PNG_INTERNAL_FUNCTION(void,png_push_have_row,(png_structrp png_ptr,
     png_bytep row),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_push_read_end,(png_structrp png_ptr,
-    png_inforp info_ptr),PNG_EMPTY);
-PNG_INTERNAL_FUNCTION(void,png_process_some_data,(png_structrp png_ptr,
     png_inforp info_ptr),PNG_EMPTY);
 PNG_INTERNAL_FUNCTION(void,png_read_push_finish_row,(PngRust* png_rust),
     PNG_EMPTY);
@@ -1705,12 +1697,6 @@ PNG_INTERNAL_FUNCTION(void,png_colorspace_set_rgb_coefficients,
    /* Set the rgb_to_gray coefficients from the colorspace Y values */
 #endif /* READ_RGB_TO_GRAY */
 #endif /* COLORSPACE */
-
-/* Added at libpng version 1.4.0 */
-PNG_INTERNAL_FUNCTION(void,png_check_IHDR,(png_const_structrp png_ptr,
-    png_uint_32 width, png_uint_32 height, int bit_depth,
-    int color_type, int interlace_type, int compression_type,
-    int filter_type),PNG_EMPTY);
 
 /* Added at libpng version 1.5.10 */
 #if defined(PNG_READ_CHECK_FOR_INVALID_INDEX_SUPPORTED) || \
@@ -2138,6 +2124,20 @@ PNG_INTERNAL_FUNCTION(int,
                        const png_bytepp),
                       PNG_EMPTY);
 #endif
+
+PNG_INTERNAL_FUNCTION(void,
+                      png_rust_set_IHDR,
+                      (PngRust* pngrust,
+                       PngInfoRust* rust_ptr,
+                       uint32_t width,
+                       uint32_t height,
+                       uint8_t bit_depth,
+                       uint8_t color_type,
+                       uint8_t interlace_type,
+                       uint8_t compression_type,
+                       uint8_t filter_type),
+                      PNG_EMPTY);
+
 
 /* Maintainer: Put new private prototypes here ^ */
 

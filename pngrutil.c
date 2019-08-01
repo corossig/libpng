@@ -295,13 +295,12 @@ png_crc_error(png_structrp png_ptr)
 static png_bytep
 png_read_buffer(png_structrp png_ptr, png_alloc_size_t new_size, int warn)
 {
-   png_bytep buffer = png_ptr->read_buffer;
+   png_bytep buffer = png_rust_get_read_buffer(png_ptr->rust_ptr);
 
-   if (buffer != NULL && new_size > png_ptr->read_buffer_size)
+   if (buffer != NULL && new_size > png_rust_get_read_buffer_size(png_ptr->rust_ptr))
    {
-      png_ptr->read_buffer = NULL;
-      png_ptr->read_buffer = NULL;
-      png_ptr->read_buffer_size = 0;
+      png_rust_set_read_buffer(png_ptr->rust_ptr, NULL);
+      png_rust_set_read_buffer_size(png_ptr->rust_ptr, 0);
       png_free(png_ptr, buffer);
       buffer = NULL;
    }
@@ -313,8 +312,8 @@ png_read_buffer(png_structrp png_ptr, png_alloc_size_t new_size, int warn)
       if (buffer != NULL)
       {
          memset(buffer, 0, new_size); /* just in case */
-         png_ptr->read_buffer = buffer;
-         png_ptr->read_buffer_size = new_size;
+         png_rust_set_read_buffer(png_ptr->rust_ptr, buffer);
+         png_rust_set_read_buffer_size(png_ptr->rust_ptr, new_size);
       }
 
       else if (warn < 2) /* else silent */
@@ -620,9 +619,9 @@ png_decompress_chunk(png_structrp png_ptr,
    png_alloc_size_t limit = PNG_SIZE_MAX;
 
 # ifdef PNG_SET_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_malloc_max > 0 &&
-       png_ptr->user_chunk_malloc_max < limit)
-      limit = png_ptr->user_chunk_malloc_max;
+   if (png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) > 0 &&
+       png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) < limit)
+      limit = png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr);
 # elif PNG_USER_CHUNK_MALLOC_MAX > 0
    if (PNG_USER_CHUNK_MALLOC_MAX < limit)
       limit = PNG_USER_CHUNK_MALLOC_MAX;
@@ -645,7 +644,7 @@ png_decompress_chunk(png_structrp png_ptr,
          png_uint_32 lzsize = chunklength - prefix_size;
 
          ret = png_inflate(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr), 1/*finish*/,
-             /* input: */ png_ptr->read_buffer + prefix_size, &lzsize,
+             /* input: */ png_rust_get_read_buffer(png_ptr->rust_ptr) + prefix_size, &lzsize,
              /* output: */ NULL, newlength);
 
          if (ret == Z_STREAM_END)
@@ -675,7 +674,7 @@ png_decompress_chunk(png_structrp png_ptr,
                   memset(text, 0, buffer_size);
 
                   ret = png_inflate(png_ptr, png_rust_get_chunk_name(png_ptr->rust_ptr), 1/*finish*/,
-                      png_ptr->read_buffer + prefix_size, &lzsize,
+                      png_rust_get_read_buffer(png_ptr->rust_ptr) + prefix_size, &lzsize,
                       text + prefix_size, newlength);
 
                   if (ret == Z_STREAM_END)
@@ -686,13 +685,13 @@ png_decompress_chunk(png_structrp png_ptr,
                            text[prefix_size + *newlength] = 0;
 
                         if (prefix_size > 0)
-                           memcpy(text, png_ptr->read_buffer, prefix_size);
+                           memcpy(text, png_rust_get_read_buffer(png_ptr->rust_ptr), prefix_size);
 
                         {
-                           png_bytep old_ptr = png_ptr->read_buffer;
+                           png_bytep old_ptr = png_rust_get_read_buffer(png_ptr->rust_ptr);
 
-                           png_ptr->read_buffer = text;
-                           png_ptr->read_buffer_size = buffer_size;
+                           png_rust_set_read_buffer(png_ptr->rust_ptr, text);
+                           png_rust_set_read_buffer_size(png_ptr->rust_ptr, buffer_size);
                            text = old_ptr; /* freed below */
                         }
                      }
@@ -832,79 +831,6 @@ png_inflate_read(png_structrp png_ptr, png_bytep read_buffer, uInt read_size,
 #endif /* READ_iCCP */
 
 /* Read and check the IDHR chunk */
-
-void /* PRIVATE */
-png_handle_IHDR(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
-{
-   png_byte buf[13];
-   png_uint_32 width, height;
-   int bit_depth, color_type, compression_type, filter_type;
-   int interlace_type;
-
-   png_debug(1, "in png_handle_IHDR");
-
-   if (png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR))
-      png_chunk_error(png_ptr, "out of place");
-
-   /* Check the length */
-   if (length != 13)
-      png_chunk_error(png_ptr, "invalid");
-
-   png_rust_add_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR);
-
-   png_crc_read(png_ptr, buf, 13);
-   png_crc_finish(png_ptr, 0);
-
-   width = png_get_uint_31(png_ptr, buf);
-   height = png_get_uint_31(png_ptr, buf + 4);
-   bit_depth = buf[8];
-   color_type = buf[9];
-   compression_type = buf[10];
-   filter_type = buf[11];
-   interlace_type = buf[12];
-
-   /* Set internal variables */
-   png_rust_set_width(png_ptr->rust_ptr, width);
-   png_rust_set_height(png_ptr->rust_ptr, height);
-   png_rust_set_bit_depth(png_ptr->rust_ptr, (png_byte)bit_depth);
-   png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
-   png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
-#ifdef PNG_MNG_FEATURES_SUPPORTED
-   png_ptr->filter_type = (png_byte)filter_type;
-#endif
-   png_ptr->compression_type = (png_byte)compression_type;
-
-   /* Find number of channels */
-   switch (png_rust_get_color_type(png_ptr->rust_ptr))
-   {
-      default: /* invalid, png_set_IHDR calls png_error */
-      case PNG_COLOR_TYPE_GRAY:
-      case PNG_COLOR_TYPE_PALETTE:
-         png_rust_set_channels(png_ptr->rust_ptr, 1);
-         break;
-
-      case PNG_COLOR_TYPE_RGB:
-         png_rust_set_channels(png_ptr->rust_ptr, 3);
-         break;
-
-      case PNG_COLOR_TYPE_GRAY_ALPHA:
-         png_rust_set_channels(png_ptr->rust_ptr, 2);
-         break;
-
-      case PNG_COLOR_TYPE_RGB_ALPHA:
-         png_rust_set_channels(png_ptr->rust_ptr, 4);
-         break;
-   }
-
-   /* Set up other useful info */
-   png_rust_set_pixel_depth(png_ptr->rust_ptr, (png_byte)(png_rust_get_bit_depth(png_ptr->rust_ptr) * png_rust_get_channels(png_ptr->rust_ptr)));
-   png_rust_set_rowbytes(png_ptr->rust_ptr, PNG_ROWBYTES(png_rust_get_pixel_depth(png_ptr->rust_ptr), png_rust_get_width(png_ptr->rust_ptr)));
-   png_debug1(3, "bit_depth = %d", png_rust_get_bit_depth(png_ptr->rust_ptr));
-   png_debug1(3, "channels = %d", png_rust_get_channels(png_ptr->rust_ptr));
-   png_debug1(3, "rowbytes = %lu", (unsigned long)png_rust_get_rowbytes(png_ptr->rust_ptr));
-   png_set_IHDR(png_ptr, info_ptr, width, height, bit_depth,
-       color_type, interlace_type, compression_type, filter_type);
-}
 
 /* Read and check the palette */
 void /* PRIVATE */
@@ -1094,24 +1020,6 @@ png_handle_PLTE(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
 #endif
 }
 
-void /* PRIVATE */
-png_handle_IEND(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
-{
-   png_debug(1, "in png_handle_IEND");
-
-   if (! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IHDR) ||
-       ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_IDAT))
-      png_chunk_error(png_ptr, "out of place");
-
-   png_rust_add_mode(png_ptr->rust_ptr, (PNG_AFTER_IDAT | PNG_HAVE_IEND));
-
-   png_crc_finish(png_ptr, length);
-
-   if (length != 0)
-      png_chunk_benign_error(png_ptr, "invalid");
-
-   PNG_UNUSED(info_ptr)
-}
 
 #ifdef PNG_READ_gAMA_SUPPORTED
 void /* PRIVATE */
@@ -1553,7 +1461,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                                               keyword_length+1);
                                           png_info_rust_set_iccp_proflen(info_ptr->rust_ptr, profile_length);
                                           png_info_rust_set_iccp_profile(info_ptr->rust_ptr, profile);
-                                          png_ptr->read_buffer = NULL; /*steal*/
+                                          png_rust_set_read_buffer(png_ptr->rust_ptr, NULL); /*steal*/
                                           info_ptr->free_me |= PNG_FREE_ICCP;
                                           png_info_rust_add_valid(info_ptr->rust_ptr, PNG_INFO_iCCP);
                                        }
@@ -1649,15 +1557,15 @@ png_handle_sPLT(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_debug(1, "in png_handle_sPLT");
 
 #ifdef PNG_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_cache_max != 0)
+   if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) != 0)
    {
-      if (png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          return;
       }
 
-      if (--png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_decr_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_warning(png_ptr, "No space in chunk cache for sPLT");
          png_crc_finish(png_ptr, length);
@@ -2520,15 +2428,15 @@ png_handle_tEXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_debug(1, "in png_handle_tEXt");
 
 #ifdef PNG_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_cache_max != 0)
+   if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) != 0)
    {
-      if (png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          return;
       }
 
-      if (--png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_decr_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          png_chunk_benign_error(png_ptr, "no space in chunk cache");
@@ -2599,15 +2507,15 @@ png_handle_zTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_debug(1, "in png_handle_zTXt");
 
 #ifdef PNG_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_cache_max != 0)
+   if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) != 0)
    {
-      if (png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          return;
       }
 
-      if (--png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_decr_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          png_chunk_benign_error(png_ptr, "no space in chunk cache");
@@ -2671,7 +2579,7 @@ png_handle_zTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
       {
          png_text text;
 
-         if (png_ptr->read_buffer == NULL)
+         if (png_rust_get_read_buffer(png_ptr->rust_ptr) == NULL)
            errmsg="Read failure in png_handle_zTXt";
          else
          {
@@ -2679,7 +2587,7 @@ png_handle_zTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
              * except for the extra compression type byte and the fact that
              * it isn't necessarily '\0' terminated.
              */
-            buffer = png_ptr->read_buffer;
+            buffer = png_rust_get_read_buffer(png_ptr->rust_ptr);
             buffer[uncompressed_length+(keyword_length+2)] = 0;
 
             text.compression = PNG_TEXT_COMPRESSION_zTXt;
@@ -2716,15 +2624,15 @@ png_handle_iTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
    png_debug(1, "in png_handle_iTXt");
 
 #ifdef PNG_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_cache_max != 0)
+   if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) != 0)
    {
-      if (png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          return;
       }
 
-      if (--png_ptr->user_chunk_cache_max == 1)
+      if (png_rust_decr_user_chunk_cache_max(png_ptr->rust_ptr) == 1)
       {
          png_crc_finish(png_ptr, length);
          png_chunk_benign_error(png_ptr, "no space in chunk cache");
@@ -2813,7 +2721,7 @@ png_handle_iTXt(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
           */
          if (png_decompress_chunk(png_ptr, length, prefix_length,
              &uncompressed_length, 1/*terminate*/) == Z_STREAM_END)
-            buffer = png_ptr->read_buffer;
+            buffer = png_rust_get_read_buffer(png_ptr->rust_ptr);
 
          else
             errmsg = png_ptr->zstream.msg;
@@ -2868,9 +2776,9 @@ png_cache_unknown_chunk(png_structrp png_ptr, png_uint_32 length)
    }
 
 #  ifdef PNG_SET_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_malloc_max > 0 &&
-       png_ptr->user_chunk_malloc_max < limit)
-      limit = png_ptr->user_chunk_malloc_max;
+   if (png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) > 0 &&
+       png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) < limit)
+      limit = png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr);
 
 #  elif PNG_USER_CHUNK_MALLOC_MAX > 0
    if (PNG_USER_CHUNK_MALLOC_MAX < limit)
@@ -3063,10 +2971,10 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
        PNG_CHUNK_ANCILLARY(png_rust_get_chunk_name(png_ptr->rust_ptr))))
    {
 #     ifdef PNG_USER_LIMITS_SUPPORTED
-      switch (png_ptr->user_chunk_cache_max)
+      switch (png_rust_get_user_chunk_cache_max(png_ptr->rust_ptr))
       {
          case 2:
-            png_ptr->user_chunk_cache_max = 1;
+            png_rust_set_user_chunk_cache_max(png_ptr->rust_ptr, 1);
             png_chunk_benign_error(png_ptr, "no space in chunk cache");
             /* FALLTHROUGH */
          case 1:
@@ -3076,7 +2984,7 @@ png_handle_unknown(png_structrp png_ptr, png_inforp info_ptr,
             break;
 
          default: /* not at limit */
-            --(png_ptr->user_chunk_cache_max);
+            png_rust_decr_user_chunk_cache_max(png_ptr->rust_ptr);
             /* FALLTHROUGH */
          case 0: /* no limit */
 #  endif /* USER_LIMITS */
@@ -3152,9 +3060,9 @@ png_check_chunk_length(png_const_structrp png_ptr, png_uint_32 length)
    png_alloc_size_t limit = PNG_UINT_31_MAX;
 
 # ifdef PNG_SET_USER_LIMITS_SUPPORTED
-   if (png_ptr->user_chunk_malloc_max > 0 &&
-       png_ptr->user_chunk_malloc_max < limit)
-      limit = png_ptr->user_chunk_malloc_max;
+   if (png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) > 0 &&
+       png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr) < limit)
+      limit = png_rust_get_user_chunk_malloc_max(png_ptr->rust_ptr);
 # elif PNG_USER_CHUNK_MALLOC_MAX > 0
    if (PNG_USER_CHUNK_MALLOC_MAX < limit)
       limit = PNG_USER_CHUNK_MALLOC_MAX;
@@ -4656,12 +4564,12 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
     * does not, so free the read buffer now regardless; the sequential reader
     * reallocates it on demand.
     */
-   if (png_ptr->read_buffer != NULL)
+   if (png_rust_get_read_buffer(png_ptr->rust_ptr) != NULL)
    {
-      png_bytep buffer = png_ptr->read_buffer;
+      png_bytep buffer = png_rust_get_read_buffer(png_ptr->rust_ptr);
 
-      png_ptr->read_buffer_size = 0;
-      png_ptr->read_buffer = NULL;
+      png_rust_set_read_buffer_size(png_ptr->rust_ptr, 0);
+      png_rust_set_read_buffer(png_ptr->rust_ptr, NULL);
       png_free(png_ptr, buffer);
    }
 

@@ -5,17 +5,95 @@ extern crate bitflags;
 extern crate enum_primitive_derive;
 use num_traits::{FromPrimitive,ToPrimitive};
 
+use std::collections::VecDeque;
+
+mod read;
+mod rutil;
+mod set;
+mod get;
 mod pread;
+mod png;
 mod png_info;
 
-#[repr(u8)]
-enum PngInterlace {
-    ADAM7,
-}
+const PNG_USER_CHUNK_CACHE_MAX: u32 = 1000 as u32;
+const PNG_USER_CHUNK_MALLOC_MAX: usize = 8000000 as usize;
+const PNG_USER_HEIGHT_MAX: u32 = 1000000 as u32;
+const PNG_USER_WIDTH_MAX: u32 = 1000000 as u32;
+
 type CPtr = usize;
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[repr(u8)]
+pub enum PngInterlace {
+    None  = 0,
+    ADAM7 = 1,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[repr(u8)]
+pub enum PngCompressionType {
+    Base,
+    Default,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[repr(u8)]
+pub enum PngFilterType {
+    Base         = 0,
+    Differencing = 64,
+}
+
+/* For use in png_set_keep_unknown, added to version 1.2.6 */
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[repr(u8)]
+pub enum PngHandleChunk {
+    AsDefault = 0,
+    Never     = 1,
+    IfSafe    = 2,
+    Always    = 3,
+}
+
+impl PngInterlace {
+    fn from_u8(value: u8) -> PngInterlace {
+        match value {
+            0 => PngInterlace::None,
+            1 => PngInterlace::ADAM7,
+            _ => {
+                println!("Invalid interlace value ({}), use none instead", value);
+                PngInterlace::None
+            }
+        }
+    }
+}
+
+impl PngCompressionType {
+    fn from_u8(value: u8) -> PngCompressionType {
+        match value {
+            0 => PngCompressionType::Base,
+            _ => {
+                println!("Invalid compression type value ({}), use base instead", value);
+                PngCompressionType::Base
+            }
+        }
+    }
+}
+
+impl PngFilterType {
+    fn from_u8(value: u8) -> PngFilterType {
+        match value {
+            0  => PngFilterType::Base,
+            64 => PngFilterType::Differencing,
+            _ => {
+                println!("Invalid filter type value ({}), use base instead", value);
+                PngFilterType::Base
+            }
+        }
+    }
+}
+
+
 bitflags! {
-    struct PngColor: u8 {
+    pub struct PngColor: u8 {
         const MASK_PALETTE = 0x1;
         const MASK_COLOR   = 0x2;
         const MASK_ALPHA   = 0x4;
@@ -24,7 +102,9 @@ bitflags! {
         const TYPE_PALETTE    = 0x2 | 0x1;
         const TYPE_RGB        = 0x2;
         const TYPE_RGB_ALPHA  = 0x2 | 0x4;
+        const TYPE_RGBA       = 0x2 | 0x4;
         const TYPE_GRAY_ALPHA = 0x4;
+        const TYPE_GA         = 0x4;
     }
 }
 
@@ -129,7 +209,6 @@ bitflags! {
     }
 }
 
-#[allow(non_upper_case_globals)] 
 bitflags! {
     pub struct PngInfoChunk: u32 {
         const gAMA = 0x0001;
@@ -152,11 +231,17 @@ bitflags! {
     }
 }
 
+bitflags! {
+    struct PngMng: u8 {
+        const EmptyPlte = 0x1;
+        const Filter64  = 0x4;
+    }
+}
 
 /* TODO : Transform it into regular enum when no more C code depends on it */
-#[derive(Debug, PartialEq, Primitive)]
+#[derive(Debug, PartialEq, Primitive, Clone, Copy)]
 #[repr(i32)]
-enum PngPushMode {
+pub enum PngPushMode {
     ReadSig   = 0,
     ReadChunk = 1,
     ReadIDAT  = 2,
@@ -167,8 +252,8 @@ enum PngPushMode {
     Error     = 8,
 }
 
-#[allow(non_camel_case_types)] 
-#[derive(Debug, PartialEq, Primitive)]
+#[allow(non_camel_case_types)]
+#[derive(Debug, PartialEq, Primitive, Clone, Copy)]
 #[repr(u32)]
 enum PngChunkType {
     NULL = 0,
@@ -211,7 +296,7 @@ pub struct Png {
 
     pass: u8,        /* current interlace pass (0 - 6) */
     //compression: u8, /* file compression type (always 0) */
-    interlaced: Option<PngInterlace>,
+    interlaced: PngInterlace,
     //filter: u8,      /* file filter type (always 0) */
 
     num_trans: u16,       /* number of transparency values */
@@ -256,7 +341,7 @@ pub struct Png {
 
     usr_channels: u8,     /* channels at start of write: write only */
 
-    sig_bytes: u8,        /* magic bytes read/written from start of file */
+    sig_bytes: usize,     /* magic bytes read/written from start of file */
     maximum_pixel_depth: u8,
                           /* pixel depth used for the row buffers */
     transformed_pixel_depth: u8,
@@ -265,20 +350,39 @@ pub struct Png {
     info_fn: CPtr,              /* called after header data fully read */
     row_fn: CPtr,               /* called after a prog. row is decoded */
     end_fn: CPtr,               /* called after image is complete */
-    save_buffer_ptr: CPtr,      /* current location in save_buffer */
-    save_buffer: CPtr,          /* buffer for previously read data */
-    current_buffer_ptr: CPtr,   /* current location in current_buffer */
-    current_buffer: CPtr,       /* buffer for recently used data */
+
+    save_buffer: VecDeque<u8>,    /* buffer for previously read data */
+    current_buffer: VecDeque<u8>, /* buffer for recently used data */
+
+    /* New member added in libpng-1.2.30 */
+    read_buffer: CPtr,          /* buffer for reading chunk data */
+    read_buffer_size: usize,    /* current size of the buffer */
+
     push_length: u32,           /* size of current input chunk */
     skip_length: u32,           /* bytes to skip in input data */
-    save_buffer_size: usize,    /* amount of data now in save_buffer */
-    save_buffer_max: usize,     /* total size of save_buffer */
+
     buffer_size: usize,         /* total amount of available input data */
-    current_buffer_size: usize, /* amount of data now in current_buffer */
+
     process_mode: PngPushMode,  /* what push library is currently doing */
     cur_palette: i32,           /* current push library palette index */
     zowner: u32,                /* ID (chunk type) of zstream owner, 0 if none */
     io_ptr: CPtr,               /* ptr to application struct for I/O functions */
+
+    mng_features_permitted: PngMng,
+    filter_type: PngFilterType, /* New member added in libpng-1.0.9, ifdef'ed out in 1.0.12, enabled in 1.2.0 */
+
+    user_width_max: u32,
+    user_height_max: u32,
+
+    /* Added in libpng-1.4.0: Total number of sPLT, text, and unknown
+     * chunks that can be stored (0 means unlimited).
+     */
+    user_chunk_cache_max: u32,
+
+    /* Total memory that a zTXt, sPLT, iTXt, iCCP, or unknown chunk
+     * can occupy when decompressed.  0 means unlimited.
+     */
+    user_chunk_malloc_max: usize,
 }
 
 impl Drop for Png {
@@ -299,7 +403,7 @@ pub extern fn png_rust_new() -> *mut Png
         transformations: PngTransformations::empty(),
         pass : 0,
         //compression : 0,
-        interlaced: None,
+        interlaced: PngInterlace::None,
         //filter : 0,
         num_trans: 0,
         do_filter: PngFilter::empty(),
@@ -333,20 +437,23 @@ pub extern fn png_rust_new() -> *mut Png
         info_fn: 0,
         row_fn: 0,
         end_fn: 0,
-        save_buffer_ptr: 0,
-        save_buffer: 0,
-        current_buffer_ptr: 0,
-        current_buffer: 0,
+        save_buffer: VecDeque::new(),
+        current_buffer: VecDeque::new(),
+        read_buffer: 0,
+        read_buffer_size: 0,
         push_length: 0,
         skip_length: 0,
-        save_buffer_size: 0,
-        save_buffer_max: 0,
         buffer_size: 0,
-        current_buffer_size: 0,
         process_mode: PngPushMode::ReadSig,
         cur_palette: 0,
         zowner: 0,
         io_ptr: 0,
+        mng_features_permitted: PngMng::empty(),
+        filter_type: PngFilterType::Base,
+        user_width_max: PNG_USER_WIDTH_MAX,
+        user_height_max: PNG_USER_HEIGHT_MAX,
+        user_chunk_cache_max: PNG_USER_CHUNK_CACHE_MAX,
+        user_chunk_malloc_max: PNG_USER_CHUNK_MALLOC_MAX,
     });
     Box::into_raw(obj)
 }
@@ -382,29 +489,18 @@ pub unsafe extern fn png_rust_decr_pass(this: *mut Png)
 }
 
 #[no_mangle]
-pub unsafe extern fn png_rust_get_interlace(this: *const Png) -> i32
+pub unsafe extern fn png_rust_get_interlace(this: *const Png) -> u8
 {
     match &this.as_ref().unwrap().interlaced {
-        Some(interlace) => {
-            match interlace {
-                PngInterlace::ADAM7 => 1,
-            }
-        },
-        None => 0,
+        PngInterlace::ADAM7 => 1,
+        _ => 0,
     }
 }
 
 #[no_mangle]
-pub unsafe extern fn png_rust_set_interlace(this: *mut Png, value: i32)
+pub unsafe extern fn png_rust_set_interlace(this: *mut Png, value: u8)
 {
-    this.as_mut().unwrap().interlaced = match value {
-        0 => None,
-        1 => Some(PngInterlace::ADAM7),
-        _ => {
-            println!("Invalid interlace value ({}), use none instead", value);
-            None
-        }
-    };
+    this.as_mut().unwrap().interlaced = PngInterlace::from_u8(value);
 }
 
 
@@ -651,43 +747,6 @@ pub unsafe extern fn png_rust_incr_row_number(this: *mut Png)
     this.as_mut().unwrap().row_number += 1;
 }
 
-#[no_mangle]
-pub unsafe extern fn png_rust_add_current_buffer_ptr(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().current_buffer_ptr += value;
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_add_save_buffer_size(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().save_buffer_size += value;
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_add_save_buffer_ptr(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().save_buffer_ptr += value;
-}
-
-
-#[no_mangle]
-pub unsafe extern fn png_rust_sub_current_buffer_size(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().current_buffer_size -= value;
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_sub_save_buffer_size(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().save_buffer_size -= value;
-}
-
-#[no_mangle]
-pub unsafe extern fn png_rust_sub_buffer_size(this: *mut Png, value: usize)
-{
-    this.as_mut().unwrap().buffer_size -= value;
-}
-
 ////////////////////////////////////////////////////////////////////////
 
 #[no_mangle]
@@ -696,6 +755,44 @@ pub unsafe extern fn png_c_set_strip_error_numbers(this: *mut Png, strip_mode: u
     let mut strip_mode_without_errors = PngFlags::from_bits_truncate(strip_mode);
     strip_mode_without_errors.remove(PngFlags::STRIP_ERROR_NUMBERS | PngFlags::STRIP_ERROR_TEXT);
     this.as_mut().unwrap().flags.remove(strip_mode_without_errors);
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_save_buffer_size(this: *const Png) -> usize
+{
+    this.as_ref().unwrap().save_buffer.len()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_mng_features_permitted(this: *mut Png, value: u8)
+{
+    this.as_mut().unwrap().mng_features_permitted = PngMng::from_bits_truncate(value);
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_mng_features_permitted(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().mng_features_permitted.bits()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_get_filter_type(this: *const Png) -> u8
+{
+    this.as_ref().unwrap().filter_type as u8
+}
+
+#[no_mangle]
+pub unsafe extern fn png_rust_set_filter_type(this: *mut Png, value: u8)
+{
+    this.as_mut().unwrap().filter_type = PngFilterType::from_u8(value);
+}
+
+
+#[no_mangle]
+pub unsafe extern fn png_rust_decr_user_chunk_cache_max(this: *mut Png) -> u32
+{
+    this.as_mut().unwrap().user_chunk_cache_max -= 1;
+    this.as_mut().unwrap().user_chunk_cache_max
 }
 
 macro_rules! get_set {
@@ -738,22 +835,21 @@ get_set!(palette,        CPtr);
 get_set!(num_palette,    u16);
 get_set!(num_palette_max, i32);
 get_set!(usr_channels,   u8);
-get_set!(sig_bytes,      u8);
+get_set!(sig_bytes,      usize);
 get_set!(maximum_pixel_depth,     u8);
 get_set!(transformed_pixel_depth, u8);
 get_set!(info_fn,        CPtr);
 get_set!(row_fn,         CPtr);
 get_set!(end_fn,         CPtr);
-get_set!(save_buffer_ptr,         CPtr);
-get_set!(save_buffer,    CPtr);
-get_set!(current_buffer_ptr,      CPtr);
-get_set!(current_buffer, CPtr);
 get_set!(push_length,    u32);
 get_set!(skip_length,    u32);
-get_set!(save_buffer_size,        usize);
-get_set!(save_buffer_max,         usize);
-get_set!(buffer_size,             usize);
-get_set!(current_buffer_size,     usize);
+get_set!(buffer_size,    usize);
 get_set!(cur_palette,    i32);
 get_set!(zowner,         u32);
 get_set!(io_ptr,         CPtr);
+get_set!(user_width_max,    u32);
+get_set!(user_height_max,   u32);
+get_set!(user_chunk_cache_max,  u32);
+get_set!(user_chunk_malloc_max, usize);
+get_set!(read_buffer,      CPtr);
+get_set!(read_buffer_size, usize);

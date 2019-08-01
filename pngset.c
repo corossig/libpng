@@ -255,38 +255,10 @@ png_set_IHDR(png_const_structrp png_ptr, png_inforp info_ptr,
     int color_type, int interlace_type, int compression_type,
     int filter_type)
 {
-   png_debug1(1, "in %s storage function", "IHDR");
-
-   if (png_ptr == NULL || info_ptr == NULL)
-      return;
-
-   png_info_rust_set_width(info_ptr->rust_ptr, width);
-   png_info_rust_set_height(info_ptr->rust_ptr, height);
-   png_info_rust_set_bit_depth(info_ptr->rust_ptr, (png_byte)bit_depth);
-   png_info_rust_set_color_type(info_ptr->rust_ptr, (png_byte)color_type);
-   png_info_rust_set_compression_type(info_ptr->rust_ptr, (png_byte)compression_type);
-   png_info_rust_set_filter_type(info_ptr->rust_ptr, (png_byte)filter_type);
-   png_info_rust_set_interlace_type(info_ptr->rust_ptr, (png_byte)interlace_type);
-
-   png_check_IHDR (png_ptr, png_info_rust_get_width(info_ptr->rust_ptr), png_info_rust_get_height(info_ptr->rust_ptr),
-       png_info_rust_get_bit_depth(info_ptr->rust_ptr), png_info_rust_get_color_type(info_ptr->rust_ptr), png_info_rust_get_interlace_type(info_ptr->rust_ptr),
-       png_info_rust_get_compression_type(info_ptr->rust_ptr), png_info_rust_get_filter_type(info_ptr->rust_ptr));
-
-   if (png_info_rust_get_color_type(info_ptr->rust_ptr) == PNG_COLOR_TYPE_PALETTE)
-      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
-
-   else if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_COLOR) != 0)
-      png_info_rust_set_channels(info_ptr->rust_ptr, 3);
-
-   else
-      png_info_rust_set_channels(info_ptr->rust_ptr, 1);
-
-   if ((png_info_rust_get_color_type(info_ptr->rust_ptr) & PNG_COLOR_MASK_ALPHA) != 0)
-      png_info_rust_incr_channels(info_ptr->rust_ptr);
-
-   png_info_rust_set_pixel_depth(info_ptr->rust_ptr, (png_byte)(png_info_rust_get_channels(info_ptr->rust_ptr) * png_info_rust_get_bit_depth(info_ptr->rust_ptr)));
-
-   png_info_rust_set_rowbytes(info_ptr->rust_ptr, PNG_ROWBYTES(png_info_rust_get_pixel_depth(info_ptr->rust_ptr), width));
+   png_rust_set_IHDR(png_ptr->rust_ptr, info_ptr->rust_ptr,
+                     width, height, bit_depth,
+                     color_type, interlace_type, compression_type,
+                     filter_type);
 }
 
 #ifdef PNG_oFFs_SUPPORTED
@@ -598,7 +570,7 @@ png_set_PLTE(png_structrp png_ptr, png_inforp info_ptr,
    if ((num_palette > 0 && palette == NULL) ||
       (num_palette == 0
 #        ifdef PNG_MNG_FEATURES_SUPPORTED
-            && (png_ptr->mng_features_permitted & PNG_FLAG_MNG_EMPTY_PLTE) == 0
+            && (png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_EMPTY_PLTE) == 0
 #        endif
       ))
    {
@@ -1333,9 +1305,9 @@ png_permit_mng_features (png_structrp png_ptr, png_uint_32 mng_features)
    if (png_ptr == NULL)
       return 0;
 
-   png_ptr->mng_features_permitted = mng_features & PNG_ALL_MNG_FEATURES;
+   png_rust_set_mng_features_permitted(png_ptr->rust_ptr, mng_features & PNG_ALL_MNG_FEATURES);
 
-   return png_ptr->mng_features_permitted;
+   return png_rust_get_mng_features_permitted(png_ptr->rust_ptr);
 }
 #endif
 
@@ -1643,8 +1615,8 @@ png_set_user_limits (png_structrp png_ptr, png_uint_32 user_width_max,
    if (png_ptr == NULL)
       return;
 
-   png_ptr->user_width_max = user_width_max;
-   png_ptr->user_height_max = user_height_max;
+   png_rust_set_user_width_max(png_ptr->rust_ptr, user_width_max);
+   png_rust_set_user_height_max(png_ptr->rust_ptr, user_height_max);
 }
 
 /* This function was added to libpng 1.4.0 */
@@ -1652,7 +1624,7 @@ void PNGAPI
 png_set_chunk_cache_max (png_structrp png_ptr, png_uint_32 user_chunk_cache_max)
 {
    if (png_ptr != NULL)
-      png_ptr->user_chunk_cache_max = user_chunk_cache_max;
+      png_rust_set_user_chunk_cache_max(png_ptr->rust_ptr, user_chunk_cache_max);
 }
 
 /* This function was added to libpng 1.4.1 */
@@ -1661,7 +1633,7 @@ png_set_chunk_malloc_max (png_structrp png_ptr,
     png_alloc_size_t user_chunk_malloc_max)
 {
    if (png_ptr != NULL)
-      png_ptr->user_chunk_malloc_max = user_chunk_malloc_max;
+      png_rust_set_user_chunk_malloc_max(png_ptr->rust_ptr, user_chunk_malloc_max);
 }
 #endif /* ?SET_USER_LIMITS */
 

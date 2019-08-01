@@ -767,7 +767,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
     */
    if (
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-       !((png_ptr->mng_features_permitted & PNG_FLAG_MNG_FILTER_64) != 0 &&
+       !((png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_FILTER_64) != 0 &&
          ( ! png_rust_has_mode(png_ptr->rust_ptr, PNG_HAVE_PNG_SIGNATURE)) &&
        (color_type == PNG_COLOR_TYPE_RGB ||
         color_type == PNG_COLOR_TYPE_RGB_ALPHA) &&
@@ -795,7 +795,7 @@ png_write_IHDR(png_structrp png_ptr, png_uint_32 width, png_uint_32 height,
    png_rust_set_color_type(png_ptr->rust_ptr, (png_byte)color_type);
    png_rust_set_interlace(png_ptr->rust_ptr, interlace_type);
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-   png_ptr->filter_type = (png_byte)filter_type;
+   png_rust_set_filter_type(png_ptr->rust_ptr, (png_byte)filter_type);
 #endif
    png_ptr->compression_type = (png_byte)compression_type;
    png_rust_set_width(png_ptr->rust_ptr, width);
@@ -852,7 +852,7 @@ png_write_PLTE(png_structrp png_ptr, png_const_colorp palette,
 
    if ((
 #ifdef PNG_MNG_FEATURES_SUPPORTED
-       (png_ptr->mng_features_permitted & PNG_FLAG_MNG_EMPTY_PLTE) == 0 &&
+       (png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_EMPTY_PLTE) == 0 &&
 #endif
        num_pal == 0) || num_pal > max_palette_length)
    {
@@ -1421,7 +1421,7 @@ png_write_bKGD(png_structrp png_ptr, png_const_color_16p back, int color_type)
       if (
 #ifdef PNG_MNG_FEATURES_SUPPORTED
           (png_rust_get_num_palette(png_ptr->rust_ptr) != 0 ||
-          (png_ptr->mng_features_permitted & PNG_FLAG_MNG_EMPTY_PLTE) == 0) &&
+          (png_rust_get_mng_features_permitted(png_ptr->rust_ptr) & PNG_FLAG_MNG_EMPTY_PLTE) == 0) &&
 #endif
          back->index >= png_rust_get_num_palette(png_ptr->rust_ptr))
       {

@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+typedef struct PngInfoRust PngInfoRust;
 typedef struct PngRust PngRust;
 
 PngRust* png_rust_new();
@@ -51,6 +52,9 @@ uint8_t png_rust_get_color_type(PngRust* pngrust);
 void png_rust_set_color_type(PngRust* pngrust, uint8_t flags);
 bool png_rust_has_color_type(PngRust* pngrust, uint8_t flags);
 bool png_rust_is_color_type(PngRust* pngrust, uint8_t flags);
+
+uint8_t png_rust_get_filter_type(PngRust* rust_ptr);
+void png_rust_set_filter_type(PngRust* rust_ptr, uint8_t value);
 
 uint8_t png_rust_get_channels(PngRust* pngrust);
 void png_rust_set_channels(PngRust* pngrust, uint8_t channels);
@@ -123,18 +127,14 @@ void png_rust_set_transformed_pixel_depth(PngRust* pngrust, uint8_t value);
 void png_rust_sub_idat_size(PngRust* pngrust, uint32_t value);
 void png_rust_incr_row_number(PngRust* pngrust);
 
+void png_rust_handle_IEND(PngRust* pngrust, uint32_t length);
+void png_rust_handle_IHDR(PngRust* pngrust, PngInfoRust* rust_info_ptr, uint32_t length);
 
 png_progressive_info_ptr  png_rust_get_info_fn(PngRust* pngrust);
 png_progressive_row_ptr   png_rust_get_row_fn(PngRust* pngrust);
 png_progressive_end_ptr   png_rust_get_end_fn(PngRust* pngrust);
-png_bytep  png_rust_get_save_buffer_ptr(PngRust* pngrust);
-png_bytep  png_rust_get_save_buffer(PngRust* pngrust);
-png_bytep  png_rust_get_current_buffer_ptr(PngRust* pngrust);
-png_bytep  png_rust_get_current_buffer(PngRust* pngrust);
 uint32_t   png_rust_get_push_length(PngRust* pngrust);
 uint32_t   png_rust_get_skip_length(PngRust* pngrust);
-size_t     png_rust_get_save_buffer_size(PngRust* pngrust);
-size_t     png_rust_get_save_buffer_max(PngRust* pngrust);
 size_t     png_rust_get_buffer_size(PngRust* pngrust);
 size_t     png_rust_get_current_buffer_size(PngRust* pngrust);
 int        png_rust_get_process_mode(PngRust* pngrust);
@@ -142,40 +142,52 @@ int        png_rust_get_cur_palette(PngRust* pngrust);
 uint32_t   png_rust_get_zowner(PngRust* pngrust);
 void      *png_rust_get_io_ptr(PngRust* pngrust);
 
+png_bytep png_rust_get_read_buffer(PngRust* pngrust);
+void png_rust_set_read_buffer(PngRust* pngrust, png_bytep ptr);
+
+size_t png_rust_get_read_buffer_size(PngRust* pngrust);
+void png_rust_set_read_buffer_size(PngRust* pngrust, size_t length);
+
+uint32_t png_rust_get_user_chunk_cache_max(PngRust* pngrust);
+void png_rust_set_user_chunk_cache_max(PngRust* pngrust, uint32_t value);
+
+size_t png_rust_get_user_chunk_malloc_max(PngRust* pngrust);
+void png_rust_set_user_chunk_malloc_max(PngRust* pngrust, size_t value);
+
+uint32_t png_rust_get_user_width_max(PngRust* pngrust);
+void png_rust_set_user_width_max(PngRust* pngrust, uint32_t value);
+
+uint32_t png_rust_get_user_height_max(PngRust* pngrust);
+void png_rust_set_user_height_max(PngRust* pngrust, uint32_t value);
+
+uint8_t png_rust_get_mng_features_permitted(PngRust* pngrust);
+void png_rust_set_mng_features_permitted(PngRust* pngrust, uint8_t value);
+
 void png_rust_set_info_fn(PngRust* pngrust, png_progressive_info_ptr value);
 void png_rust_set_row_fn(PngRust* pngrust, png_progressive_row_ptr value);
 void png_rust_set_end_fn(PngRust* pngrust, png_progressive_end_ptr value);
-void png_rust_set_save_buffer_ptr(PngRust* pngrust, png_bytep value);
-void png_rust_set_save_buffer(PngRust* pngrust, png_bytep value);
-void png_rust_set_current_buffer_ptr(PngRust* pngrust, png_bytep value);
-void png_rust_set_current_buffer(PngRust* pngrust, png_bytep value);
 void png_rust_set_push_length(PngRust* pngrust, uint32_t value);
 void png_rust_set_skip_length(PngRust* pngrust, uint32_t value);
-void png_rust_set_save_buffer_size(PngRust* pngrust, size_t value);
-void png_rust_set_save_buffer_max(PngRust* pngrust, size_t value);
 void png_rust_set_buffer_size(PngRust* pngrust, size_t value);
-void png_rust_set_current_buffer_size(PngRust* pngrust, size_t value);
 void png_rust_set_process_mode(PngRust* pngrust, int value);
 void png_rust_set_cur_palette(PngRust* pngrust, int value);
 void png_rust_set_zowner(PngRust* pngrust, uint32_t value);
 void png_rust_set_io_ptr(PngRust* pngrust, void *value);
 
-void png_rust_add_current_buffer_ptr(PngRust* pngrust, size_t value);
-void png_rust_add_save_buffer_size(PngRust* pngrust, size_t value);
-void png_rust_add_save_buffer_ptr(PngRust* pngrust, size_t value);
-
-void png_rust_sub_current_buffer_size(PngRust* pngrust, size_t value);
-void png_rust_sub_save_buffer_size(PngRust* pngrust, size_t value);
-void png_rust_sub_buffer_size(PngRust* pngrust, size_t value);
+size_t png_rust_get_save_buffer_size(PngRust* pngrust);
+uint32_t png_rust_decr_user_chunk_cache_max(PngRust* pngrust);
 
 void png_c_set_strip_error_numbers(PngRust* pngrust, uint32_t ustrip_mode);
+void png_rust_process_data(PngRust* pngrust, PngInfoRust* rust_ptr, void* buffer, size_t buffer_size);
+size_t png_rust_process_data_pause(PngRust* pngrust, bool save);
 
-
+int32_t png_rust_get_IHDR(PngRust* pngrust, PngInfoRust* rust_ptr,
+                          uint32_t* width, uint32_t* height, int32_t* bit_depth,
+                          int32_t* color_type, int32_t* interlace_type,
+                          int32_t* compression_type, int32_t* filter_type);
 /*
  *      PngInfo part
  */
-
-typedef struct PngInfoRust PngInfoRust;
 
 PngInfoRust* png_info_rust_new();
 
@@ -253,6 +265,7 @@ void png_info_rust_add_valid(PngInfoRust* rust_ptr, uint32_t value);
 void png_info_rust_remove_valid(PngInfoRust* rust_ptr, uint32_t value);
 
 void png_info_rust_add_color_type(PngInfoRust* rust_ptr, uint8_t value);
+bool png_info_rust_has_color_type(PngInfoRust* rust_ptr, uint8_t value);
 
 
 png_color_16p png_info_rust_ptr_trans_color(PngInfoRust* rust_ptr);

@@ -1,5 +1,7 @@
 use crate::PngInterlace;
 use crate::PngColor;
+use crate::PngFilterType;
+use crate::PngCompressionType;
 use crate::PngInfoChunk;
 use crate::CPtr;
 use std::fmt;
@@ -41,29 +43,32 @@ enum PngResolution {
 
 #[allow(non_snake_case)]
 pub struct PngInfo {
-    png_info: CPtr,   /* Pointer to the C structure */
+    pub png_info: CPtr,   /* Pointer to the C structure */
+
+    /* This is never set during write */
+    pub signature: [u8; 8], /* magic bytes read by libpng from start of file */
 
     /* The following are necessary for every PNG file */
-    width: u32,       /* width of image in pixels (from IHDR) */
-    height: u32,      /* height of image in pixels (from IHDR) */
+    pub width: u32,       /* width of image in pixels (from IHDR) */
+    pub height: u32,      /* height of image in pixels (from IHDR) */
     valid: PngInfoChunk, /* valid chunk data (see PNG_INFO_ below) */
-    rowbytes: usize,  /* bytes needed to hold an untransformed row */
+    pub rowbytes: usize,  /* bytes needed to hold an untransformed row */
     palette: CPtr,    /* array of color values (valid & PNG_INFO_PLTE) */
     num_palette: u16, /* number of color entries in "palette" (PLTE) */
     num_trans: u16,   /* number of transparent palette color (tRNS) */
-    bit_depth: u8,    /* 1, 2, 4, 8, or 16 bits/channel (from IHDR) */
-    color_type: PngColor,   /* see PNG_COLOR_TYPE_ below (from IHDR) */
+    pub bit_depth: u8,    /* 1, 2, 4, 8, or 16 bits/channel (from IHDR) */
+    pub color_type: PngColor,   /* see PNG_COLOR_TYPE_ below (from IHDR) */
 
     /* The following three should have been named *_method not *_type */
-    compression_type: u8,         /* must be PNG_COMPRESSION_TYPE_BASE (IHDR) */
-    filter_type: u8,              /* must be PNG_FILTER_TYPE_BASE (from IHDR) */
-    interlace_type: Option<PngInterlace>, /* One of PNG_INTERLACE_NONE, PNG_INTERLACE_ADAM7 */
+    pub compression_type: PngCompressionType, /* must be PNG_COMPRESSION_TYPE_BASE (IHDR) */
+    pub filter_type: PngFilterType,           /* must be PNG_FILTER_TYPE_BASE (from IHDR) */
+    pub interlace_type: PngInterlace,         /* One of PNG_INTERLACE_NONE, PNG_INTERLACE_ADAM7 */
 
     /* The following are set by png_set_IHDR, called from the application on
      * write, but the are never actually used by the write code.
      */
-    channels: u8,     /* number of data channels per pixel (1, 2, 3, 4) */
-    pixel_depth: u8,  /* number of bits per pixel */
+    pub channels: u8,     /* number of data channels per pixel (1, 2, 3, 4) */
+    pub pixel_depth: u8,  /* number of bits per pixel */
     spare_byte: u8,   /* to align the data, and for future use */
 
     /* This is never set during write */
@@ -159,6 +164,7 @@ pub extern fn png_info_rust_new(png_info_ptr: CPtr) -> *mut PngInfo
 {
     let obj = Box::new(PngInfo {
         png_info: png_info_ptr,
+        signature: [0; 8],
         width: 0,
         height: 0,
         valid: PngInfoChunk::empty(),
@@ -168,9 +174,9 @@ pub extern fn png_info_rust_new(png_info_ptr: CPtr) -> *mut PngInfo
         num_trans: 0,
         bit_depth: 0,
         color_type: PngColor::empty(),
-        compression_type: 0,
-        filter_type: 0,
-        interlace_type: None,
+        compression_type: PngCompressionType::Base,
+        filter_type: PngFilterType::Base,
+        interlace_type: PngInterlace::None,
         channels: 0,
         pixel_depth: 0,
         spare_byte: 0,
@@ -243,8 +249,6 @@ get_set_info!(palette, CPtr);
 get_set_info!(num_palette, u16);
 get_set_info!(num_trans, u16);
 get_set_info!(bit_depth, u8);
-get_set_info!(compression_type, u8);
-get_set_info!(filter_type, u8);
 get_set_info!(channels, u8);
 get_set_info!(pixel_depth, u8);
 get_set_info!(spare_byte, u8);
@@ -273,6 +277,13 @@ get_set_info!(scal_s_height, CPtr);
 pub unsafe extern fn png_info_rust_get_color_type(this: *const PngInfo) -> u8
 {
     this.as_ref().unwrap().color_type.bits()
+}
+
+#[no_mangle]
+pub unsafe extern fn png_info_rust_has_color_type(this: *const PngInfo, color_type: u8) -> bool
+{
+    let color_type = PngColor::from_bits_truncate(color_type);
+    this.as_ref().unwrap().color_type.contains(color_type)
 }
 
 #[no_mangle]
@@ -390,25 +401,34 @@ pub unsafe extern fn png_info_rust_set_phys_unit_type(this: *mut PngInfo, value:
 }
 
 #[no_mangle]
-pub unsafe extern fn png_info_rust_get_interlace_type(this: *const PngInfo) -> u32 {
-    match &this.as_ref().unwrap().interlace_type {
-        Some(interlace) => {
-            match interlace {
-                PngInterlace::ADAM7 => 1,
-            }
-        },
-        None => 0,
+pub unsafe extern fn png_info_rust_get_interlace_type(this: *const PngInfo) -> u8 {
+    this.as_ref().unwrap().interlace_type as u8
+}
+
+#[no_mangle]
+pub unsafe extern fn png_info_rust_get_compression_type(this: *const PngInfo) -> u8 {
+    this.as_ref().unwrap().compression_type as u8
+}
+
+#[no_mangle]
+pub unsafe extern fn png_info_rust_get_filter_type(this: *const PngInfo) -> u8 {
+    this.as_ref().unwrap().filter_type as u8
+}
+
+impl PngInterlace {
+    fn from_u32(value: u32) -> PngInterlace {
+        match value {
+            0 => PngInterlace::None,
+            1 => PngInterlace::ADAM7,
+            _ => {
+                println!("Invalid interlace value ({}), use none instead", value);
+                PngInterlace::None
+            },
+        }
     }
 }
 
 #[no_mangle]
 pub unsafe extern fn png_info_rust_set_interlace_type(this: *mut PngInfo, value: u32) {
-    this.as_mut().unwrap().interlace_type = match value {
-        0 => None,
-        1 => Some(PngInterlace::ADAM7),
-        _ => {
-            println!("Invalid interlace value ({}), use none instead", value);
-            None
-        }
-    };
+    this.as_mut().unwrap().interlace_type = PngInterlace::from_u32(value);
 }

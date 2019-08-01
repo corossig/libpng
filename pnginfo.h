@@ -55,10 +55,8 @@
 
 struct png_info_def
 {
-#ifdef PNG_READ_SUPPORTED
    /* This is never set during write */
    png_byte signature[8];   /* magic bytes read by libpng from start of file */
-#endif
 
 #if defined(PNG_COLORSPACE_SUPPORTED) || defined(PNG_GAMMA_SUPPORTED)
    /* png_colorspace only contains 'flags' if neither GAMMA or COLORSPACE are
