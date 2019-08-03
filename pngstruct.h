@@ -209,9 +209,6 @@ struct png_struct_def
 #if ZLIB_VERNUM >= 0x1240
    png_byte zstream_start;    /* at start of an input zlib stream */
 #endif /* Zlib >= 1.2.4 */
-#if defined(PNG_READ_FILLER_SUPPORTED) || defined(PNG_WRITE_FILLER_SUPPORTED)
-   png_uint_16 filler;           /* filler bytes for pixel expansion */
-#endif
 
 #if defined(PNG_bKGD_SUPPORTED) || defined(PNG_READ_BACKGROUND_SUPPORTED) ||\
    defined(PNG_READ_ALPHA_MODE_SUPPORTED)

@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 
 mod read;
 mod rutil;
+mod trans;
 mod set;
 mod get;
 mod pread;
@@ -383,6 +384,7 @@ pub struct Png {
      * can occupy when decompressed.  0 means unlimited.
      */
     user_chunk_malloc_max: usize,
+    filler: u16,                /* filler bytes for pixel expansion */
 }
 
 impl Drop for Png {
@@ -454,6 +456,7 @@ pub extern fn png_rust_new() -> *mut Png
         user_height_max: PNG_USER_HEIGHT_MAX,
         user_chunk_cache_max: PNG_USER_CHUNK_CACHE_MAX,
         user_chunk_malloc_max: PNG_USER_CHUNK_MALLOC_MAX,
+        filler: 0,
     });
     Box::into_raw(obj)
 }
@@ -853,3 +856,4 @@ get_set!(user_chunk_cache_max,  u32);
 get_set!(user_chunk_malloc_max, usize);
 get_set!(read_buffer,      CPtr);
 get_set!(read_buffer_size, usize);
+get_set!(filler, u16);

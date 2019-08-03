@@ -76,7 +76,6 @@ void png_rust_set_do_filter(PngRust* pngrust, uint32_t flags);
 bool png_rust_is_do_filter(PngRust* pngrust, uint32_t flags);
 
 
-
 uint32_t png_rust_get_width(PngRust* pngrust);
 uint32_t png_rust_get_height(PngRust* pngrust);
 uint32_t png_rust_get_num_rows(PngRust* pngrust);
@@ -99,6 +98,7 @@ uint8_t  png_rust_get_usr_channels(PngRust* pngrust);
 uint8_t  png_rust_get_sig_bytes(PngRust* pngrust);
 uint8_t  png_rust_get_maximum_pixel_depth(PngRust* pngrust);
 uint8_t  png_rust_get_transformed_pixel_depth(PngRust* pngrust);
+uint16_t png_rust_get_filler(PngRust* pngrust);
 
 
 void png_rust_set_width(PngRust* pngrust, uint32_t value);
@@ -278,5 +278,8 @@ void png_info_rust_set_trans_color(PngInfoRust* rust_ptr, png_const_color_16p tr
 
 void png_info_rust_incr_channels(PngInfoRust* rust_ptr);
 void png_info_rust_incr_num_text(PngInfoRust* rust_ptr);
+
+
+void png_rust_get_row_info(PngRust* rust_ptr, png_row_infop row_info);
 
 #endif /* PNGRUST_H */

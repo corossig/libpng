@@ -64,8 +64,8 @@ extern {
 
 #[no_mangle]
 pub unsafe extern fn png_rust_set_progressive_read_fn(this: *mut Png,
-                                                   progressive_ptr: CPtr,
-                                                   info_fn: CPtr, row_fn: CPtr, end_fn: CPtr)
+                                                      progressive_ptr: CPtr,
+                                                      info_fn: CPtr, row_fn: CPtr, end_fn: CPtr)
 {
     match this.as_mut() {
         None => {

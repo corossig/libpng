@@ -4996,7 +4996,7 @@ png_do_read_transformations(png_structrp png_ptr, png_row_infop row_info)
 #ifdef PNG_READ_FILLER_SUPPORTED
    if (png_rust_has_transformations(png_ptr->rust_ptr, PNG_FILLER))
       png_do_read_filler(row_info, png_rust_get_row_buf(png_ptr->rust_ptr) + 1,
-                         (png_uint_32)png_ptr->filler, png_rust_get_flags(png_ptr->rust_ptr));
+                         (png_uint_32)png_rust_get_filler(png_ptr->rust_ptr), png_rust_get_flags(png_ptr->rust_ptr));
 #endif
 
 #ifdef PNG_READ_SWAP_ALPHA_SUPPORTED
